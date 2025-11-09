@@ -10,7 +10,7 @@ export const dvdTrackSchema = z.object({
   label: z.string().optional(),
   time: z.string().optional(),
   lyric: z.string().optional(),
-  track: z.string().optional().nullable()
+  track: z.string().optional()
 });
 
 export const dvdSchema = z.object({
@@ -21,7 +21,8 @@ export const dvdSchema = z.object({
   videoUrl: z
     .string()
     .url('URL inválida')
-    .refine((value) => vimeoRegex.test(value) || youtubeEmbedRegex.test(value), 'Informe uma URL do Vimeo ou YouTube'),
+    .refine((value) => vimeoRegex.test(value) || youtubeEmbedRegex.test(value), 'Informe uma URL do Vimeo ou YouTube')
+    .optional(),
   cover: z.string().optional(),
   status: z.enum(['draft', 'published']).optional(),
   publishedAt: z.coerce.date().nullable().optional(),

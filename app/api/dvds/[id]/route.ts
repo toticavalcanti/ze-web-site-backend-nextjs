@@ -3,7 +3,6 @@ import { Types } from 'mongoose';
 import { connectMongo } from '@/lib/mongodb';
 import DvdModel from '@/lib/models/Dvd';
 import DvdTrackModel from '@/lib/models/DvdTrack';
-import LyricModel from '@/lib/models/Lyric';
 import UploadFileModel from '@/lib/models/UploadFile';
 import { dvdSchema } from '@/lib/validations/dvd';
 import { requireAdmin } from '@/lib/api';
@@ -13,14 +12,26 @@ import { softDeleteMultipleMedia } from '@/lib/cloudinary-helpers';
 
 function resolveObjectId(value: unknown): Types.ObjectId | null {
   if (!value) return null;
+
   if (value instanceof Types.ObjectId) return value;
+
   if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
     return new Types.ObjectId(value);
   }
+
   if (typeof value === 'object' && value !== null) {
-    const candidate = (value as { _id?: unknown; id?: unknown })._id ?? (value as { id?: unknown }).id;
-    return resolveObjectId(candidate);
+    const obj = value as { _id?: unknown; id?: unknown; ref?: unknown; kind?: unknown };
+
+    if (obj.ref) {
+      return resolveObjectId(obj.ref);
+    }
+
+    const candidate = obj._id ?? obj.id;
+    if (candidate) {
+      return resolveObjectId(candidate);
+    }
   }
+
   return null;
 }
 
@@ -64,12 +75,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
   if (Array.isArray(dvdDoc.track) && dvdDoc.track.length > 0) {
     try {
       const trackIds = dvdDoc.track
-        .map((entry) => {
-          if (entry && typeof entry === 'object' && 'ref' in (entry as Record<string, unknown>)) {
-            return resolveObjectId((entry as { ref?: unknown }).ref ?? null);
-          }
-          return resolveObjectId(entry);
-        })
+        .map((entry) => resolveObjectId(entry))
         .filter((value): value is Types.ObjectId => Boolean(value));
 
       logger('🔍 Track IDs a buscar:', trackIds);
@@ -84,32 +90,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
         const trackIdString = track._id.toString();
         trackCopy.id = trackIdString;
 
-        if (track.lyric) {
-          try {
-            const lyricId = resolveObjectId(track.lyric);
-            if (lyricId) {
-              const lyricDoc = await LyricModel.findById(lyricId)
-                .select('_id title slug composer content body text')
-                .lean();
-              if (lyricDoc) {
-                trackCopy.lyric = {
-                  _id: lyricDoc._id,
-                  title: (lyricDoc as Record<string, unknown>).title,
-                  slug: (lyricDoc as Record<string, unknown>).slug,
-                  composer: (lyricDoc as Record<string, unknown>).composer,
-                  content:
-                    (lyricDoc as Record<string, unknown>).content ||
-                    (lyricDoc as Record<string, unknown>).body ||
-                    (lyricDoc as Record<string, unknown>).text ||
-                    '',
-                  id: lyricDoc._id.toString()
-                };
-              }
-            }
-          } catch (error) {
-            logger('⚠️ Erro lyric:', error);
-          }
-        }
+        trackCopy.lyric = typeof track.lyric === 'string' ? track.lyric : '';
 
         if (track.track) {
           try {
@@ -217,54 +198,63 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const keepTrackIds: string[] = [];
 
       for (const track of tracks) {
-        if (track._id && isObjectId(track._id)) {
-          const existingTrack = await DvdTrackModel.findById(track._id);
-          if (existingTrack) {
-            const previousAudio = existingTrack.track?.toString();
-            existingTrack.name = track.name;
-            existingTrack.composers = track.composers;
-            existingTrack.label = track.label;
-            existingTrack.time = track.time;
-            existingTrack.lyric = track.lyric;
-            existingTrack.track = track.track || undefined;
-            await existingTrack.save();
-            if (track.track && track.track !== previousAudio) {
-              await attachFile({ fileId: track.track, refId: existingTrack._id, kind: 'DvdTrack', field: 'track' });
-              await detachFile(previousAudio, existingTrack._id);
-              await deleteFileIfOrphan(previousAudio, {
-                reason: 'track_deleted',
-                relatedTo: `DvdTrack:${existingTrack._id.toString()}`,
-                userId: authResult.session.user!.id
-              });
-            } else if (!track.track && previousAudio) {
-              await detachFile(previousAudio, existingTrack._id);
-              await deleteFileIfOrphan(previousAudio, {
-                reason: 'track_deleted',
-                relatedTo: `DvdTrack:${existingTrack._id.toString()}`,
-                userId: authResult.session.user!.id
-              });
-            }
-            keepTrackIds.push(existingTrack._id.toString());
+        const trackId = resolveObjectId(track._id);
+        if (trackId) {
+          const existingTrack = await DvdTrackModel.findById(trackId);
+          if (!existingTrack) {
+            continue;
           }
-        } else {
-          const created = await DvdTrackModel.create({
-            name: track.name,
-            composers: track.composers,
-            label: track.label,
-            time: track.time,
-            lyric: track.lyric,
-            track: track.track || undefined
-          });
-          if (track.track) {
-            await attachFile({ fileId: track.track, refId: created._id, kind: 'DvdTrack', field: 'track' });
+
+          const previousAudio = existingTrack.track?.toString();
+          existingTrack.name = track.name;
+          existingTrack.composers = track.composers;
+          existingTrack.label = track.label;
+          existingTrack.time = track.time;
+          existingTrack.lyric = track.lyric;
+          existingTrack.track = track.track || undefined;
+          await existingTrack.save();
+          if (track.track && track.track !== previousAudio) {
+            await attachFile({ fileId: track.track, refId: existingTrack._id, kind: 'DvdTrack', field: 'track' });
+            await detachFile(previousAudio, existingTrack._id);
+            await deleteFileIfOrphan(previousAudio, {
+              reason: 'track_deleted',
+              relatedTo: `DvdTrack:${existingTrack._id.toString()}`,
+              userId: authResult.session.user!.id
+            });
+          } else if (!track.track && previousAudio) {
+            await detachFile(previousAudio, existingTrack._id);
+            await deleteFileIfOrphan(previousAudio, {
+              reason: 'track_deleted',
+              relatedTo: `DvdTrack:${existingTrack._id.toString()}`,
+              userId: authResult.session.user!.id
+            });
           }
-          keepTrackIds.push(created._id.toString());
+          keepTrackIds.push(existingTrack._id.toString());
+          continue;
         }
+
+        if (track._id && !trackId) {
+          continue;
+        }
+
+        const created = await DvdTrackModel.create({
+          name: track.name,
+          composers: track.composers,
+          label: track.label,
+          time: track.time,
+          lyric: track.lyric,
+          track: track.track || undefined
+        });
+        if (track.track) {
+          await attachFile({ fileId: track.track, refId: created._id, kind: 'DvdTrack', field: 'track' });
+        }
+        keepTrackIds.push(created._id.toString());
       }
 
       const oldTrackIds = (dvd.track ?? [])
-        .map((value) => (typeof value === 'string' ? value : value?.toString()))
-        .filter((value): value is string => Boolean(value));
+        .map((value) => resolveObjectId(value))
+        .filter((value): value is Types.ObjectId => Boolean(value))
+        .map((value) => value.toString());
 
       for (const oldId of oldTrackIds) {
         if (!keepTrackIds.includes(oldId)) {
@@ -333,8 +323,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   const coverId = dvd.cover?.toString();
   const trackIds = (dvd.track ?? [])
-    .map((value) => (typeof value === 'string' ? value : value?.toString()))
-    .filter((value): value is string => Boolean(value));
+    .map((value) => resolveObjectId(value))
+    .filter((value): value is Types.ObjectId => Boolean(value))
+    .map((value) => value.toString());
 
   const tracks = trackIds.length ? await DvdTrackModel.find({ _id: { $in: trackIds } }) : [];
 

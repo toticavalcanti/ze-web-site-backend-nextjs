@@ -9,7 +9,8 @@
     "lint": "next lint",
     "create-super-admin": "node scripts/create-super-admin.mjs",
     "cleanup:cloudinary": "tsx scripts/cleanup-cloudinary.ts",
-    "fix:published-cds": "tsx scripts/fix-published-cds.ts"
+    "fix:published-cds": "tsx scripts/fix-published-cds.ts",
+    "fix:dvd-tracks": "tsx scripts/fix-dvd-tracks.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -471,11 +471,11 @@ export default function NewDvdPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Letra</Label>
+                        <Label>Letra da música</Label>
                         <RichTextEditor
                           value={track.lyric}
                           onChange={(value) => updateTrack(track.id, 'lyric', value)}
-                          placeholder="Cole a letra da música, se disponível"
+                          placeholder="Digite a letra da música aqui..."
                           rows={4}
                         />
                       </div>
