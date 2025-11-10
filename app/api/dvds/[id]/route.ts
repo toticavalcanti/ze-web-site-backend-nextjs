@@ -10,6 +10,68 @@ import { attachFile, detachFile, deleteFileIfOrphan } from '@/lib/upload';
 import { generateSlug, isObjectId } from '@/lib/utils';
 import { softDeleteMultipleMedia } from '@/lib/cloudinary-helpers';
 
+type NormalizedRelatedEntry = {
+  _id: string;
+  ref: string;
+  kind: string;
+  field: string;
+  id: string;
+} & Record<string, unknown>;
+
+function normalizeRelatedEntries(
+  related: unknown,
+  {
+    ownerId,
+    defaultKind,
+    defaultField
+  }: { ownerId?: Types.ObjectId | string | null; defaultKind: string; defaultField: string }
+): NormalizedRelatedEntry[] {
+  const ownerIdString = ownerId ? ownerId.toString() : undefined;
+  const entries = Array.isArray(related) ? related : related ? [related] : [];
+  const normalized: NormalizedRelatedEntry[] = [];
+
+  for (const entry of entries) {
+    if (!entry) continue;
+
+    if (typeof entry === 'object') {
+      const raw = { ...(entry as Record<string, unknown>) };
+      const refValue = raw.ref ?? raw.refId ?? raw.id ?? ownerIdString;
+      const idValue = raw._id ?? raw.id ?? raw.ref ?? raw.refId ?? refValue ?? ownerIdString;
+      const normalizedEntry: NormalizedRelatedEntry = {
+        ...raw,
+        _id: idValue ? idValue.toString() : ownerIdString ?? '',
+        ref: refValue ? refValue.toString() : ownerIdString ?? '',
+        kind: typeof raw.kind === 'string' ? (raw.kind as string) : defaultKind,
+        field: typeof raw.field === 'string' ? (raw.field as string) : defaultField,
+        id: (raw.id ?? idValue ?? refValue ?? ownerIdString)?.toString?.() ?? ownerIdString ?? ''
+      };
+      normalized.push(normalizedEntry);
+      continue;
+    }
+
+    const refString = entry.toString();
+    normalized.push({
+      _id: refString,
+      ref: refString,
+      kind: defaultKind,
+      field: defaultField,
+      id: refString
+    });
+  }
+
+  if (ownerIdString && !normalized.some((entry) => entry.ref === ownerIdString)) {
+    normalized.push({
+      _id: ownerIdString,
+      ref: ownerIdString,
+      kind: defaultKind,
+      field: defaultField,
+      id: ownerIdString
+    });
+  }
+
+  return normalized;
+}
+
 function resolveObjectId(value: unknown): Types.ObjectId | null {
   if (!value) return null;
 
@@ -77,23 +139,11 @@ async function loadDvd(identifier: string, { log = false } = {}) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
 
-          const relatedEntries: string[] = Array.isArray(coverDoc.related)
-            ? coverDoc.related.map((relatedEntry: unknown) => {
-                if (!relatedEntry) return '';
-                if (typeof relatedEntry === 'object' && relatedEntry !== null && '_id' in relatedEntry) {
-                  return (relatedEntry as { _id: Types.ObjectId | string })._id.toString();
-                }
-                return relatedEntry.toString();
-              })
-            : coverDoc.related
-              ? [coverDoc.related.toString()]
-              : [];
-
-          if (!relatedEntries.includes(dvdDoc._id.toString())) {
-            relatedEntries.push(dvdDoc._id.toString());
-          }
-
-          coverCopy.related = relatedEntries.filter(Boolean);
+          coverCopy.related = normalizeRelatedEntries(coverDoc.related, {
+            ownerId: dvdDoc._id,
+            defaultKind: 'Dvd',
+            defaultField: 'cover'
+          });
 
           result.cover = coverCopy;
         }
@@ -134,19 +184,11 @@ async function loadDvd(identifier: string, { log = false } = {}) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
 
-                const relatedEntries: string[] = Array.isArray(audioDoc.related)
-                  ? audioDoc.related.map((relatedEntry: unknown) => {
-                      if (!relatedEntry) return '';
-                      if (typeof relatedEntry === 'object' && relatedEntry !== null && '_id' in relatedEntry) {
-                        return (relatedEntry as { _id: Types.ObjectId | string })._id.toString();
-                      }
-                      return relatedEntry.toString();
-                    })
-                  : audioDoc.related
-                    ? [audioDoc.related.toString()]
-                    : [];
-
-                audioCopy.related = relatedEntries.filter(Boolean);
+                audioCopy.related = normalizeRelatedEntries(audioDoc.related, {
+                  ownerId: track._id,
+                  defaultKind: 'DvdTrack',
+                  defaultField: 'track'
+                });
 
                 trackCopy.track = audioCopy;
               }
