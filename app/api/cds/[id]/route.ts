@@ -11,66 +11,35 @@ import { attachFile, detachFile, deleteFileIfOrphan } from '@/lib/upload';
 import { generateSlug, isObjectId } from '@/lib/utils';
 import { softDeleteMultipleMedia } from '@/lib/cloudinary-helpers';
 
-type NormalizedRelatedEntry = {
-  _id: string;
-  ref: string;
-  kind: string;
-  field: string;
-  id: string;
-} & Record<string, unknown>;
-
-function normalizeRelatedEntries(
-  related: unknown,
-  {
-    ownerId,
-    defaultKind,
-    defaultField
-  }: { ownerId?: Types.ObjectId | string | null; defaultKind: string; defaultField: string }
-): NormalizedRelatedEntry[] {
-  const ownerIdString = ownerId ? ownerId.toString() : undefined;
+function normalizeRelatedIds(related: unknown): string[] {
   const entries = Array.isArray(related) ? related : related ? [related] : [];
-  const normalized: NormalizedRelatedEntry[] = [];
 
-  for (const entry of entries) {
-    if (!entry) continue;
+  return entries
+    .map((entry) => {
+      if (!entry) return null;
 
-    if (typeof entry === 'object') {
-      const raw = { ...(entry as Record<string, unknown>) };
-      const refValue = raw.ref ?? raw.refId ?? raw.id ?? ownerIdString;
-      const idValue = raw._id ?? raw.id ?? raw.ref ?? raw.refId ?? refValue ?? ownerIdString;
-      const normalizedEntry: NormalizedRelatedEntry = {
-        ...raw,
-        _id: idValue ? idValue.toString() : ownerIdString ?? '',
-        ref: refValue ? refValue.toString() : ownerIdString ?? '',
-        kind: typeof raw.kind === 'string' ? (raw.kind as string) : defaultKind,
-        field: typeof raw.field === 'string' ? (raw.field as string) : defaultField,
-        id: (raw.id ?? idValue ?? refValue ?? ownerIdString)?.toString?.() ?? ownerIdString ?? ''
-      };
-      normalized.push(normalizedEntry);
-      continue;
-    }
+      if (entry instanceof Types.ObjectId) {
+        return entry.toString();
+      }
 
-    const refString = entry.toString();
-    normalized.push({
-      _id: refString,
-      ref: refString,
-      kind: defaultKind,
-      field: defaultField,
-      id: refString
-    });
-  }
+      if (typeof entry === 'object') {
+        const raw = entry as { ref?: unknown; _id?: unknown; id?: unknown };
+        const candidate = raw.ref ?? raw._id ?? raw.id;
+        if (candidate instanceof Types.ObjectId) {
+          return candidate.toString();
+        }
+        if (typeof candidate === 'string') {
+          return candidate;
+        }
+        if (candidate) {
+          return candidate.toString();
+        }
+        return null;
+      }
 
-  if (ownerIdString && !normalized.some((entry) => entry.ref === ownerIdString)) {
-    normalized.push({
-      _id: ownerIdString,
-      ref: ownerIdString,
-      kind: defaultKind,
-      field: defaultField,
-      id: ownerIdString
-    });
-  }
-
-  return normalized;
+      return entry.toString();
+    })
+    .filter((value): value is string => Boolean(value));
 }
 
 function resolveObjectId(value: unknown): Types.ObjectId | null {
@@ -134,11 +103,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
 
-          coverCopy.related = normalizeRelatedEntries(coverDoc.related, {
-            ownerId: cdDoc._id,
-            defaultKind: 'Cd',
-            defaultField: 'cover'
-          });
+          coverCopy.related = normalizeRelatedIds(coverDoc.related);
 
           result.cover = coverCopy;
         }
@@ -209,11 +174,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
 
-                audioCopy.related = normalizeRelatedEntries(audioDoc.related, {
-                  ownerId: track._id,
-                  defaultKind: 'CdTrack',
-                  defaultField: 'track'
-                });
+                audioCopy.related = normalizeRelatedIds(audioDoc.related);
 
                 trackCopy.track = [audioCopy];
               }
