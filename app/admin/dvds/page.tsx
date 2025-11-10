@@ -26,6 +26,7 @@ interface DvdItem {
   cover?: { url: string } | null;
   createdAt?: string;
   updatedAt?: string;
+  slug?: string;
 }
 
 type DvdResponse = LegacyListResponse<DvdItem>;
@@ -228,7 +229,7 @@ export default function DvdsPage() {
         render: (item) => (
           <div className="flex items-center justify-end gap-2">
             <Button asChild variant="outline" size="sm" className="h-8 px-3">
-              <Link href={`/admin/dvds/${item._id}`}>Editar</Link>
+              <Link href={`/admin/dvds/${item.slug || item._id}`}>Editar</Link>
             </Button>
             <Button
               variant="outline"
@@ -280,7 +281,7 @@ export default function DvdsPage() {
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Button asChild variant="outline" size="sm" className="h-8 px-3">
-                <Link href={`/admin/dvds/${item._id}`}>Editar</Link>
+                <Link href={`/admin/dvds/${item.slug || item._id}`}>Editar</Link>
               </Button>
               <Button
                 variant="outline"

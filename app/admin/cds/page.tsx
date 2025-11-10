@@ -26,6 +26,7 @@ interface CdItem {
   tracksCount?: number;
   createdAt?: string;
   cover?: { url: string } | null;
+  slug?: string;
 }
 
 type CdResponse = LegacyListResponse<CdItem>;
@@ -241,7 +242,7 @@ export default function CdsPage() {
         render: (item) => (
           <div className="flex items-center justify-end gap-2">
             <Button asChild variant="outline" size="sm" className="h-8 px-3">
-              <Link href={`/admin/cds/${item._id}`}>Editar</Link>
+              <Link href={`/admin/cds/${item.slug || item._id}`}>Editar</Link>
             </Button>
             <Button
               variant="outline"
@@ -293,7 +294,7 @@ export default function CdsPage() {
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Button asChild variant="outline" size="sm" className="h-8 px-3">
-                <Link href={`/admin/cds/${item._id}`}>Editar</Link>
+                <Link href={`/admin/cds/${item.slug || item._id}`}>Editar</Link>
               </Button>
               <Button
                 variant="outline"

@@ -10,69 +10,26 @@ import { attachFile, detachFile, deleteFileIfOrphan } from '@/lib/upload';
 import { generateSlug, isObjectId } from '@/lib/utils';
 import { softDeleteMultipleMedia } from '@/lib/cloudinary-helpers';
 
-const DOCUMENT_OMIT_KEYS = [
-  'createdAt',
-  'updatedAt',
-  '__v',
-  'deleted',
-  'deletedAt',
-  'deletionReason',
-  'relatedTo',
-  'created_by',
-  'updated_by',
-  'status',
-  'publishedAt',
-  'published'
-] as const;
-
-const MEDIA_OMIT_KEYS = [
-  'related',
-  'deleted',
-  'deletedAt',
-  'deletedBy',
-  'deletionReason',
-  'relatedTo',
-  'createdAt',
-  'updatedAt',
-  'created_by',
-  'updated_by',
-  '__v'
-] as const;
-
-const TRACK_OMIT_KEYS = ['createdAt', 'updatedAt', '__v'] as const;
-
-function omitKeys<T extends Record<string, unknown>>(obj: T, keys: readonly string[]): T {
-  const clean = { ...obj } as T;
-  for (const key of keys) {
-    delete (clean as Record<string, unknown>)[key];
+function removeExtraFields(entry: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!entry) {
+    return {};
   }
+
+  const {
+    created_by,
+    updated_by,
+    deleted,
+    deletedAt,
+    deletedBy,
+    deletionReason,
+    relatedTo,
+    status,
+    publishedAt,
+    published,
+    ...clean
+  } = entry;
+
   return clean;
-}
-
-function cleanUploadFile(entry: unknown): Record<string, unknown> | null {
-  if (!entry || typeof entry !== 'object') {
-    return null;
-  }
-
-  const record = entry as Record<string, unknown>;
-  return omitKeys(record, MEDIA_OMIT_KEYS);
-}
-
-function cleanTrack(entry: Record<string, unknown>): Record<string, unknown> {
-  const cleaned = omitKeys(entry, TRACK_OMIT_KEYS);
-
-  if (cleaned.track && typeof cleaned.track === 'object' && cleaned.track !== null && !Array.isArray(cleaned.track)) {
-    const cleanedTrack = cleanUploadFile(cleaned.track);
-    if (cleanedTrack) {
-      cleaned.track = cleanedTrack;
-    }
-  }
-
-  return cleaned;
-}
-
-function cleanForFrontend(obj: Record<string, unknown>): Record<string, unknown> {
-  return omitKeys(obj, DOCUMENT_OMIT_KEYS);
 }
 
 function resolveObjectId(value: unknown): Types.ObjectId | null {
@@ -135,8 +92,22 @@ async function loadDvd(identifier: string, { log = false } = {}) {
         if (coverDoc) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
-          const cleanedCover = cleanUploadFile(coverCopy) ?? coverCopy;
-          result.cover = cleanedCover;
+
+          if (coverDoc.related) {
+            coverCopy.related = Array.isArray(coverDoc.related)
+              ? coverDoc.related.map((relatedEntry: unknown) => {
+                  if (!relatedEntry) return relatedEntry;
+                  if (typeof relatedEntry === 'object' && relatedEntry !== null && '_id' in relatedEntry) {
+                    return (relatedEntry as { _id: Types.ObjectId | string })._id.toString();
+                  }
+                  return relatedEntry.toString();
+                })
+              : [coverDoc.related.toString()];
+          } else {
+            coverCopy.related = [];
+          }
+
+          result.cover = removeExtraFields(coverCopy);
         }
       }
     } catch (error) {
@@ -174,8 +145,22 @@ async function loadDvd(identifier: string, { log = false } = {}) {
               if (audioDoc) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
-                const cleanedAudio = cleanUploadFile(audioCopy) ?? audioCopy;
-                trackCopy.track = cleanedAudio;
+
+                if (audioDoc.related) {
+                  audioCopy.related = Array.isArray(audioDoc.related)
+                    ? audioDoc.related.map((relatedEntry: unknown) => {
+                        if (!relatedEntry) return relatedEntry;
+                        if (typeof relatedEntry === 'object' && relatedEntry !== null && '_id' in relatedEntry) {
+                          return (relatedEntry as { _id: Types.ObjectId | string })._id.toString();
+                        }
+                        return relatedEntry.toString();
+                      })
+                    : [audioDoc.related.toString()];
+                } else {
+                  audioCopy.related = [];
+                }
+
+                trackCopy.track = removeExtraFields(audioCopy);
               }
             }
           } catch (error) {
@@ -183,7 +168,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
           }
         }
 
-        tracksById.set(trackIdString, cleanTrack(trackCopy));
+        tracksById.set(trackIdString, removeExtraFields(trackCopy));
       }
 
       const orderedTracks = trackIds
@@ -202,12 +187,13 @@ async function loadDvd(identifier: string, { log = false } = {}) {
 
   result.id = dvdDoc._id.toString();
 
-  return cleanForFrontend(result);
+  return removeExtraFields(result);
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   console.log('\n🔍 ===== GET DVD BY ID =====');
-  console.log('📌 ID:', params.id);
+  console.log('📌 Parâmetro recebido:', params.id);
+  console.log('📌 É ObjectId?', isObjectId(params.id));
 
   try {
     await connectMongo();
@@ -215,9 +201,17 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     const dvd = await loadDvd(params.id, { log: true });
 
     if (!dvd) {
+      console.log('❌ DVD não encontrado');
+      console.log('===== FIM GET DVD =====\n');
       return NextResponse.json(null, { status: 404 });
     }
 
+    const dvdRecord = dvd as Record<string, unknown>;
+    const cover = dvdRecord.cover as { related?: unknown } | undefined;
+
+    console.log('✅ DVD encontrado:', dvdRecord.title);
+    console.log('✅ Campos retornados:', Object.keys(dvdRecord));
+    console.log('✅ Cover tem related?', cover?.related ? 'SIM' : 'NÃO');
     console.log('===== FIM GET DVD =====\n');
     return NextResponse.json(dvd);
   } catch (error) {
