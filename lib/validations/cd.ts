@@ -11,6 +11,7 @@ export const cdTrackSchema = z.object({
 
 export const cdSchema = z.object({
   title: z.string().min(1),
+  slug: z.string().optional(),
   company: z.string().optional(),
   release_date: z.string().optional(),
   info: z.string().optional(),

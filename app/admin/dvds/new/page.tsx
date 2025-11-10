@@ -15,7 +15,7 @@ import { ImageUpload, type UploadedImage } from '@/components/admin/image-upload
 import { AudioUpload, type UploadedAudio } from '@/components/admin/audio-upload';
 import { toast } from 'sonner';
 import { GripVertical, PlusCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, generateSlug } from '@/lib/utils';
 
 const DRAG_DATA_FORMAT = 'application/x-track-id';
 
@@ -86,6 +86,8 @@ export default function NewDvdPage() {
   const [trackErrors, setTrackErrors] = useState<Record<string, { title?: string; time?: string }>>({});
   const [coverError, setCoverError] = useState<string | null>(null);
   const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
+  const [slug, setSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,6 +98,16 @@ export default function NewDvdPage() {
       info: '',
       videoUrl: '',
       published: false
+    }
+  });
+
+  const titleRegister = form.register('title', {
+    onChange: (event) => {
+      const value = event.target.value;
+      if (!slugManuallyEdited) {
+        const normalized = value.trim().length ? generateSlug(value) : '';
+        setSlug(normalized);
+      }
     }
   });
 
@@ -256,6 +268,7 @@ export default function NewDvdPage() {
 
     const payload = {
       title: rest.title.trim(),
+      slug: slug.trim() ? slug.trim() : undefined,
       company: rest.company?.trim() ? rest.company.trim() : undefined,
       release_date: rest.release_date.trim(),
       info: rest.info?.trim() ? rest.info.trim() : undefined,
@@ -300,10 +313,29 @@ export default function NewDvdPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
-              <Input id="title" placeholder="Ex: Nome do DVD" {...form.register('title')} />
+              <Input id="title" placeholder="Ex: Nome do DVD" {...titleRegister} />
               {form.formState.errors.title && (
                 <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug (URL amigável)</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(event) => {
+                  const rawValue = event.target.value;
+                  if (rawValue.trim().length === 0) {
+                    setSlug('');
+                    setSlugManuallyEdited(false);
+                    return;
+                  }
+                  setSlug(generateSlug(rawValue));
+                  setSlugManuallyEdited(true);
+                }}
+                placeholder="Ex: ze-ramalho-canta-raul-seixas"
+              />
+              <p className="text-xs text-muted-foreground">Usado na URL. Gerado automaticamente a partir do título.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">

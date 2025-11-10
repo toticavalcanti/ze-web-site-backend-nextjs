@@ -6,6 +6,7 @@ import { dvdSchema } from '@/lib/validations/dvd';
 import { attachFile } from '@/lib/upload';
 import { requireAdmin } from '@/lib/api';
 import LyricModel from '@/lib/models/Lyric';
+import { generateSlug } from '@/lib/utils';
 import {
   buildPaginatedResponse,
   buildRegexFilter,
@@ -373,6 +374,20 @@ export async function POST(request: Request) {
     const { tracks = [], status: _status, ...dvdData } = parsed.data;
     const publishedAtInput = dvdData.publishedAt ?? dvdData.published_at ?? null;
     const normalizedPublishedAt = publishedAtInput ? new Date(publishedAtInput) : null;
+
+    const slugInput = typeof dvdData.slug === 'string' ? dvdData.slug.trim() : '';
+    const slugSource = slugInput || dvdData.title;
+    if (slugSource) {
+      const normalizedSlug = generateSlug(slugSource);
+      let finalSlug = normalizedSlug;
+      let counter = 1;
+      while (await DvdModel.exists({ slug: finalSlug })) {
+        finalSlug = `${normalizedSlug}-${counter++}`;
+      }
+      dvdData.slug = finalSlug;
+    } else {
+      delete dvdData.slug;
+    }
 
     const dvd = await DvdModel.create({
       ...dvdData,

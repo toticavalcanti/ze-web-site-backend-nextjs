@@ -18,15 +18,31 @@ export function applyUniqueSlug(schema: Schema, options: UniqueSlugOptions = {})
     };
 
     const sourceValue = doc[source];
-    if (typeof sourceValue !== 'string' || !sourceValue.trim()) {
+    const hasSource = typeof sourceValue === 'string' && sourceValue.trim().length > 0;
+    const rawSlug = typeof doc[slugField] === 'string' ? (doc[slugField] as string) : '';
+
+    if (!hasSource && !rawSlug.trim()) {
       return;
     }
 
-    const baseSlug = generateSlug(sourceValue);
-    let currentSlug = typeof doc[slugField] === 'string' ? (doc[slugField] as string) : undefined;
+    const baseSlug = hasSource ? generateSlug(sourceValue as string) : generateSlug(rawSlug);
+    const slugModified = doc.isModified(slugField);
+    const sourceModified = hasSource && doc.isModified(source);
 
-    if (!currentSlug || doc.isModified(source) || doc.isModified(slugField)) {
-      currentSlug = baseSlug;
+    let desiredSlug = rawSlug.trim();
+
+    if (!desiredSlug) {
+      desiredSlug = baseSlug;
+    } else if (slugModified) {
+      desiredSlug = generateSlug(desiredSlug);
+    } else if (sourceModified) {
+      desiredSlug = baseSlug;
+    } else {
+      desiredSlug = generateSlug(desiredSlug);
+    }
+
+    if (!desiredSlug) {
+      desiredSlug = baseSlug;
     }
 
     const Model = doc.constructor;
@@ -39,11 +55,11 @@ export function applyUniqueSlug(schema: Schema, options: UniqueSlugOptions = {})
       return filter;
     };
 
-    let slugToUse = currentSlug || baseSlug;
+    let slugToUse = desiredSlug;
     let suffix = 1;
 
     while (await Model.exists(buildFilter(slugToUse))) {
-      slugToUse = `${baseSlug}-${suffix++}`;
+      slugToUse = `${desiredSlug}-${suffix++}`;
     }
 
     doc[slugField] = slugToUse;

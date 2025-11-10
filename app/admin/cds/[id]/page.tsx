@@ -15,7 +15,7 @@ import { ImageUpload, type UploadedImage } from '@/components/admin/image-upload
 import { AudioUpload, type UploadedAudio } from '@/components/admin/audio-upload';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, GripVertical, PlusCircle, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, generateSlug } from '@/lib/utils';
 
 const DRAG_DATA_FORMAT = 'application/x-track-id';
 
@@ -173,6 +173,8 @@ export default function EditCdPage() {
   const [trackErrors, setTrackErrors] = useState<Record<string, { title?: string; time?: string }>>({});
   const [coverError, setCoverError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slug, setSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -182,6 +184,16 @@ export default function EditCdPage() {
       release_date: '',
       info: '',
       published: false
+    }
+  });
+
+  const titleRegister = form.register('title', {
+    onChange: (event) => {
+      const value = event.target.value;
+      if (!slugManuallyEdited) {
+        const normalized = value.trim().length ? generateSlug(value) : '';
+        setSlug(normalized);
+      }
     }
   });
 
@@ -215,6 +227,10 @@ export default function EditCdPage() {
         setTracks(trackList);
         setExpandedTrackIds([]);
         setTrackErrors({});
+
+        const slugValue = typeof data.slug === 'string' ? data.slug : '';
+        setSlug(slugValue);
+        setSlugManuallyEdited(Boolean(slugValue));
       } catch (error) {
         toast.error('Não foi possível carregar o CD');
         router.push('/admin/cds');
@@ -383,6 +399,7 @@ export default function EditCdPage() {
 
     const payload = {
       title: rest.title.trim(),
+      slug: slug.trim() ? slug.trim() : undefined,
       company: rest.company?.trim() ? rest.company.trim() : undefined,
       release_date: rest.release_date.trim(),
       info: rest.info?.trim() ? rest.info.trim() : undefined,
@@ -470,6 +487,9 @@ export default function EditCdPage() {
       } satisfies FormValues;
 
       form.reset(nextValues);
+      const refreshedSlug = typeof updated.slug === 'string' ? (updated.slug as string) : slug;
+      setSlug(refreshedSlug);
+      setSlugManuallyEdited(Boolean(refreshedSlug));
     }
 
     router.refresh();
@@ -499,10 +519,29 @@ export default function EditCdPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
-              <Input id="title" placeholder="Ex: Nome do álbum" {...form.register('title')} />
+              <Input id="title" placeholder="Ex: Nome do álbum" {...titleRegister} />
               {form.formState.errors.title && (
                 <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug (URL amigável)</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(event) => {
+                  const rawValue = event.target.value;
+                  if (rawValue.trim().length === 0) {
+                    setSlug('');
+                    setSlugManuallyEdited(false);
+                    return;
+                  }
+                  setSlug(generateSlug(rawValue));
+                  setSlugManuallyEdited(true);
+                }}
+                placeholder="Ex: ze-ramalho-ao-vivo"
+              />
+              <p className="text-xs text-muted-foreground">Usado na URL do site. Gerado automaticamente a partir do título.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">

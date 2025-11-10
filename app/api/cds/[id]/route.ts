@@ -8,8 +8,73 @@ import UploadFileModel from '@/lib/models/UploadFile';
 import { cdSchema } from '@/lib/validations/cd';
 import { requireAdmin } from '@/lib/api';
 import { attachFile, detachFile, deleteFileIfOrphan } from '@/lib/upload';
-import { isObjectId } from '@/lib/utils';
+import { generateSlug, isObjectId } from '@/lib/utils';
 import { softDeleteMultipleMedia } from '@/lib/cloudinary-helpers';
+
+const DOCUMENT_OMIT_KEYS = [
+  'createdAt',
+  'updatedAt',
+  '__v',
+  'deleted',
+  'deletedAt',
+  'deletionReason',
+  'relatedTo',
+  'created_by',
+  'updated_by',
+  'status',
+  'publishedAt',
+  'published'
+] as const;
+
+const MEDIA_OMIT_KEYS = [
+  'related',
+  'deleted',
+  'deletedAt',
+  'deletedBy',
+  'deletionReason',
+  'relatedTo',
+  'createdAt',
+  'updatedAt',
+  'created_by',
+  'updated_by',
+  '__v'
+] as const;
+
+const TRACK_OMIT_KEYS = ['createdAt', 'updatedAt', '__v'] as const;
+
+function omitKeys<T extends Record<string, unknown>>(obj: T, keys: readonly string[]): T {
+  const clean = { ...obj } as T;
+  for (const key of keys) {
+    delete (clean as Record<string, unknown>)[key];
+  }
+  return clean;
+}
+
+function cleanUploadFile(entry: unknown): Record<string, unknown> | null {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const record = entry as Record<string, unknown>;
+  return omitKeys(record, MEDIA_OMIT_KEYS);
+}
+
+function cleanTrack(entry: Record<string, unknown>): Record<string, unknown> {
+  const cleaned = omitKeys(entry, TRACK_OMIT_KEYS);
+
+  if (cleaned.track && typeof cleaned.track === 'object' && cleaned.track !== null && !Array.isArray(cleaned.track)) {
+    const cleanedTrack = cleanUploadFile(cleaned.track);
+    if (cleanedTrack) {
+      cleaned.track = cleanedTrack;
+    }
+  }
+
+  return cleaned;
+}
+
+function cleanForFrontend(obj: Record<string, unknown>): Record<string, unknown> {
+  return omitKeys(obj, DOCUMENT_OMIT_KEYS);
+}
 
 function resolveObjectId(value: unknown): Types.ObjectId | null {
   if (!value) return null;
@@ -18,7 +83,13 @@ function resolveObjectId(value: unknown): Types.ObjectId | null {
     return new Types.ObjectId(value);
   }
   if (typeof value === 'object' && value !== null) {
-    const candidate = (value as { _id?: unknown; id?: unknown })._id ?? (value as { _id?: unknown; id?: unknown }).id;
+    const obj = value as { _id?: unknown; id?: unknown; ref?: unknown };
+
+    if (obj.ref) {
+      return resolveObjectId(obj.ref);
+    }
+
+    const candidate = obj._id ?? obj.id;
     return resolveObjectId(candidate);
   }
   return null;
@@ -31,7 +102,15 @@ async function loadCd(identifier: string, { log = false } = {}) {
     }
   };
 
-  const cdDoc = await CdModel.findOne(isObjectId(identifier) ? { _id: identifier } : { slug: identifier }).lean();
+  const isId = isObjectId(identifier);
+  logger('🔍 Identifier:', identifier);
+  logger('🔍 É ObjectId?', isId);
+  const query = isId ? { _id: identifier } : { slug: identifier };
+  logger('🔍 Query:', query);
+
+  const cdDoc = await CdModel.findOne(query).lean();
+
+  logger('🔍 CD encontrado?', Boolean(cdDoc));
 
   if (!cdDoc) {
     logger('❌ CD não encontrado');
@@ -51,7 +130,8 @@ async function loadCd(identifier: string, { log = false } = {}) {
         if (coverDoc) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
-          result.cover = coverCopy;
+          const cleanedCover = cleanUploadFile(coverCopy) ?? coverCopy;
+          result.cover = cleanedCover;
         }
       }
     } catch (error) {
@@ -119,7 +199,8 @@ async function loadCd(identifier: string, { log = false } = {}) {
               if (audioDoc) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
-                trackCopy.track = audioCopy;
+                const cleanedAudio = cleanUploadFile(audioCopy) ?? audioCopy;
+                trackCopy.track = cleanedAudio;
               }
             }
           } catch (error) {
@@ -127,7 +208,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
           }
         }
 
-        tracksById.set(trackIdString, trackCopy);
+        tracksById.set(trackIdString, cleanTrack(trackCopy));
       }
 
       const orderedTracks = trackIds
@@ -145,9 +226,8 @@ async function loadCd(identifier: string, { log = false } = {}) {
   }
 
   result.id = cdDoc._id.toString();
-  result.published = Boolean(cdDoc.published_at ?? (cdDoc as { publishedAt?: unknown }).publishedAt);
 
-  return result;
+  return cleanForFrontend(result);
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
@@ -193,7 +273,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const previousCover = cd.cover?.toString();
-    const { tracks, ...restData } = parsed.data;
+    const { tracks, slug: incomingSlug, ...restData } = parsed.data;
     const updateData = { ...restData } as typeof restData & { status?: 'draft' | 'published' };
     const hasPublishedAtField =
       Object.prototype.hasOwnProperty.call(body, 'published_at') ||
@@ -209,6 +289,25 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         updateData.publishedAt = null;
         updateData.published_at = null;
       }
+    }
+
+    const titleForSlug =
+      typeof updateData.title === 'string' && updateData.title.trim().length > 0
+        ? updateData.title
+        : typeof cd.title === 'string'
+          ? cd.title
+          : '';
+    const slugInput = typeof incomingSlug === 'string' ? incomingSlug.trim() : '';
+    const slugSource = slugInput || titleForSlug;
+
+    if (slugSource) {
+      const normalizedSlug = generateSlug(slugSource);
+      let finalSlug = normalizedSlug;
+      let counter = 1;
+      while (await CdModel.exists({ slug: finalSlug, _id: { $ne: cd._id } })) {
+        finalSlug = `${normalizedSlug}-${counter++}`;
+      }
+      cd.slug = finalSlug;
     }
 
     Object.assign(cd, updateData, { updated_by: authResult.session.user!.id });

@@ -6,6 +6,7 @@ import { cdSchema } from '@/lib/validations/cd';
 import { attachFile } from '@/lib/upload';
 import { requireAdmin } from '@/lib/api';
 import LyricModel from '@/lib/models/Lyric';
+import { generateSlug } from '@/lib/utils';
 import {
   buildPaginatedResponse,
   buildRegexFilter,
@@ -363,6 +364,20 @@ export async function POST(request: Request) {
     const { tracks = [], status: _status, ...cdData } = parsed.data;
     const publishedAtInput = cdData.publishedAt ?? cdData.published_at ?? null;
     const normalizedPublishedAt = publishedAtInput ? new Date(publishedAtInput) : null;
+
+    const slugInput = typeof cdData.slug === 'string' ? cdData.slug.trim() : '';
+    const slugSource = slugInput || cdData.title;
+    if (slugSource) {
+      const normalizedSlug = generateSlug(slugSource);
+      let finalSlug = normalizedSlug;
+      let counter = 1;
+      while (await CdModel.exists({ slug: finalSlug })) {
+        finalSlug = `${normalizedSlug}-${counter++}`;
+      }
+      cdData.slug = finalSlug;
+    } else {
+      delete cdData.slug;
+    }
 
     const cd = await CdModel.create({
       ...cdData,
