@@ -120,18 +120,6 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
           coverCopy.related = normalizeRelatedIds(coverDoc.related);
 
-          if (coverDoc.created_by) {
-            coverCopy.created_by = coverDoc.created_by instanceof Types.ObjectId
-              ? coverDoc.created_by.toString()
-              : coverDoc.created_by;
-          }
-
-          if (coverDoc.updated_by) {
-            coverCopy.updated_by = coverDoc.updated_by instanceof Types.ObjectId
-              ? coverDoc.updated_by.toString()
-              : coverDoc.updated_by;
-          }
-
           result.cover = coverCopy;
         }
       }
@@ -153,7 +141,8 @@ async function loadCd(identifier: string, { log = false } = {}) {
         })
         .filter((value): value is Types.ObjectId => Boolean(value));
 
-      logger('🔍 Track IDs a buscar:', trackIds);
+      logger('🔍 Total de track IDs no CD:', trackIds.length);
+      logger('🔍 IDs das tracks:', trackIds.map((id) => id.toString()));
 
       const tracks = await CdTrackModel.find({ _id: { $in: trackIds } }).lean().exec();
       logger(`✅ Tracks encontrados: ${tracks.length}`);
@@ -161,6 +150,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
       const tracksById = new Map<string, Record<string, unknown>>();
 
       for (const track of tracks) {
+        logger('📝 Processando track:', track._id.toString(), '- Nome:', track.name);
         const trackCopy = JSON.parse(JSON.stringify(track)) as Record<string, unknown>;
         const trackIdString = track._id.toString();
         trackCopy.id = trackIdString;
@@ -203,18 +193,6 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
                 audioCopy.related = normalizeRelatedIds(audioDoc.related);
 
-                if (audioDoc.created_by) {
-                  audioCopy.created_by = audioDoc.created_by instanceof Types.ObjectId
-                    ? audioDoc.created_by.toString()
-                    : audioDoc.created_by;
-                }
-
-                if (audioDoc.updated_by) {
-                  audioCopy.updated_by = audioDoc.updated_by instanceof Types.ObjectId
-                    ? audioDoc.updated_by.toString()
-                    : audioDoc.updated_by;
-                }
-
                 trackCopy.track = [audioCopy];
               }
             }
@@ -232,7 +210,9 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
       const orderedTracks = trackIds
         .map((id) => tracksById.get(id.toString()))
-        .filter((value): value is Record<string, unknown> => Boolean(value));
+        .filter((value): value is Record<string, unknown> => {
+          return Boolean(value) && Boolean((value as { _id?: unknown })._id);
+        });
 
       result.track = orderedTracks;
       logger('✅ Tracks populados:', orderedTracks.length);
