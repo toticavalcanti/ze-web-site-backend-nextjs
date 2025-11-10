@@ -94,6 +94,9 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
   const result: Record<string, unknown> = JSON.parse(JSON.stringify(cdDoc));
 
+  // Garante que o campo `id` seja reinserido apenas ao final.
+  delete result.id;
+
   if (cdDoc.created_by) {
     result.created_by = cdDoc.created_by instanceof Types.ObjectId
       ? cdDoc.created_by.toString()
@@ -241,6 +244,8 @@ async function loadCd(identifier: string, { log = false } = {}) {
     }
   }
 
+  // Adiciona o campo `id` somente após popular todas as dependências,
+  // espelhando a ordem emitida pelo Strapi.
   result.id = cdDoc._id.toString();
 
   return result;
