@@ -99,6 +99,18 @@ async function loadDvd(identifier: string, { log = false } = {}) {
 
   const result: Record<string, unknown> = JSON.parse(JSON.stringify(dvdDoc));
 
+  if (dvdDoc.created_by) {
+    result.created_by = dvdDoc.created_by instanceof Types.ObjectId
+      ? dvdDoc.created_by.toString()
+      : dvdDoc.created_by;
+  }
+
+  if (dvdDoc.updated_by) {
+    result.updated_by = dvdDoc.updated_by instanceof Types.ObjectId
+      ? dvdDoc.updated_by.toString()
+      : dvdDoc.updated_by;
+  }
+
   if (dvdDoc.cover) {
     try {
       const coverId = resolveObjectId(dvdDoc.cover);
@@ -109,6 +121,18 @@ async function loadDvd(identifier: string, { log = false } = {}) {
           coverCopy.id = coverDoc._id.toString();
 
           coverCopy.related = normalizeRelatedIds(coverDoc.related);
+
+          if (coverDoc.created_by) {
+            coverCopy.created_by = coverDoc.created_by instanceof Types.ObjectId
+              ? coverDoc.created_by.toString()
+              : coverDoc.created_by;
+          }
+
+          if (coverDoc.updated_by) {
+            coverCopy.updated_by = coverDoc.updated_by instanceof Types.ObjectId
+              ? coverDoc.updated_by.toString()
+              : coverDoc.updated_by;
+          }
 
           result.cover = coverCopy;
         }

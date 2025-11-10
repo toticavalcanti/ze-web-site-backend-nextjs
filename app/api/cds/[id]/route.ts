@@ -94,6 +94,18 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
   const result: Record<string, unknown> = JSON.parse(JSON.stringify(cdDoc));
 
+  if (cdDoc.created_by) {
+    result.created_by = cdDoc.created_by instanceof Types.ObjectId
+      ? cdDoc.created_by.toString()
+      : cdDoc.created_by;
+  }
+
+  if (cdDoc.updated_by) {
+    result.updated_by = cdDoc.updated_by instanceof Types.ObjectId
+      ? cdDoc.updated_by.toString()
+      : cdDoc.updated_by;
+  }
+
   if (cdDoc.cover) {
     try {
       const coverId = resolveObjectId(cdDoc.cover);
@@ -104,6 +116,18 @@ async function loadCd(identifier: string, { log = false } = {}) {
           coverCopy.id = coverDoc._id.toString();
 
           coverCopy.related = normalizeRelatedIds(coverDoc.related);
+
+          if (coverDoc.created_by) {
+            coverCopy.created_by = coverDoc.created_by instanceof Types.ObjectId
+              ? coverDoc.created_by.toString()
+              : coverDoc.created_by;
+          }
+
+          if (coverDoc.updated_by) {
+            coverCopy.updated_by = coverDoc.updated_by instanceof Types.ObjectId
+              ? coverDoc.updated_by.toString()
+              : coverDoc.updated_by;
+          }
 
           result.cover = coverCopy;
         }
@@ -175,6 +199,18 @@ async function loadCd(identifier: string, { log = false } = {}) {
                 audioCopy.id = audioDoc._id.toString();
 
                 audioCopy.related = normalizeRelatedIds(audioDoc.related);
+
+                if (audioDoc.created_by) {
+                  audioCopy.created_by = audioDoc.created_by instanceof Types.ObjectId
+                    ? audioDoc.created_by.toString()
+                    : audioDoc.created_by;
+                }
+
+                if (audioDoc.updated_by) {
+                  audioCopy.updated_by = audioDoc.updated_by instanceof Types.ObjectId
+                    ? audioDoc.updated_by.toString()
+                    : audioDoc.updated_by;
+                }
 
                 trackCopy.track = [audioCopy];
               }
