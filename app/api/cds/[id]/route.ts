@@ -145,7 +145,16 @@ async function loadCd(identifier: string, { log = false } = {}) {
       logger('🔍 IDs das tracks:', trackIds.map((id) => id.toString()));
 
       const tracks = await CdTrackModel.find({ _id: { $in: trackIds } }).lean().exec();
-      logger(`✅ Tracks encontrados: ${tracks.length}`);
+      logger('📊 Tracks encontradas no DB:', tracks.length);
+      logger('📊 Tracks esperadas:', trackIds.length);
+
+      if (tracks.length !== trackIds.length) {
+        const foundIds = new Set(tracks.map((track) => track._id.toString()));
+        const missingIds = trackIds
+          .map((id) => id.toString())
+          .filter((id) => !foundIds.has(id));
+        logger('⚠️ Tracks não encontradas:', missingIds);
+      }
 
       const tracksById = new Map<string, Record<string, unknown>>();
 
@@ -206,15 +215,34 @@ async function loadCd(identifier: string, { log = false } = {}) {
         }
 
         tracksById.set(trackIdString, trackCopy);
+        logger('✅ Track adicionada ao Map:', trackIdString);
       }
 
+      logger('🗺️ Tracks no Map:', Array.from(tracksById.keys()));
+      logger('🗺️ Total no Map:', tracksById.size);
+
       const orderedTracks = trackIds
-        .map((id) => tracksById.get(id.toString()))
-        .filter((value): value is Record<string, unknown> => {
-          return Boolean(value) && Boolean((value as { _id?: unknown })._id);
-        });
+        .map((id) => {
+          const trackId = id.toString();
+          const track = tracksById.get(trackId);
+
+          if (!track) {
+            logger('⚠️ Track não encontrada no Map:', trackId);
+            return null;
+          }
+
+          if (!(track as { _id?: unknown })._id) {
+            logger('⚠️ Track sem _id:', trackId);
+            return null;
+          }
+
+          return track;
+        })
+        .filter((value): value is Record<string, unknown> => value !== null && Boolean((value as { _id?: unknown })._id));
 
       result.track = orderedTracks;
+      logger('✅ Total de tracks válidas:', orderedTracks.length);
+      logger('✅ IDs das tracks válidas:', orderedTracks.map((track) => track._id));
       logger('✅ Tracks populados:', orderedTracks.length);
       if (orderedTracks.length > 0) {
         logger('✅ Primeira track:', JSON.stringify(orderedTracks[0], null, 2));
