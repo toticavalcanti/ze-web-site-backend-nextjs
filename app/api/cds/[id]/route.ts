@@ -123,7 +123,12 @@ async function loadCd(identifier: string, { log = false } = {}) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
 
-          coverCopy.related = normalizeRelatedIds(coverDoc.related);
+          const relatedIds = normalizeRelatedIds(coverDoc.related);
+          const ownerId = cdDoc._id.toString();
+          if (!relatedIds.includes(ownerId)) {
+            relatedIds.push(ownerId);
+          }
+          coverCopy.related = relatedIds;
 
           result.cover = cleanForStrapi(coverCopy);
         }
