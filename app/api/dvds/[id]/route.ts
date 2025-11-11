@@ -41,6 +41,23 @@ function normalizeRelatedIds(related: unknown): string[] {
     .filter((value): value is string => Boolean(value));
 }
 
+function cleanForStrapi(obj: Record<string, unknown>): Record<string, unknown> {
+  const {
+    created_by,
+    updated_by,
+    deleted,
+    deletedAt,
+    deletedBy,
+    deletionReason,
+    relatedTo,
+    status,
+    publishedAt,
+    ...clean
+  } = obj;
+
+  return clean;
+}
+
 function resolveObjectId(value: unknown): Types.ObjectId | null {
   if (!value) return null;
 
@@ -102,18 +119,6 @@ async function loadDvd(identifier: string, { log = false } = {}) {
   // Garante que o campo `id` seja reinserido apenas ao final.
   delete result.id;
 
-  if (dvdDoc.created_by) {
-    result.created_by = dvdDoc.created_by instanceof Types.ObjectId
-      ? dvdDoc.created_by.toString()
-      : dvdDoc.created_by;
-  }
-
-  if (dvdDoc.updated_by) {
-    result.updated_by = dvdDoc.updated_by instanceof Types.ObjectId
-      ? dvdDoc.updated_by.toString()
-      : dvdDoc.updated_by;
-  }
-
   if (dvdDoc.cover) {
     try {
       const coverId = resolveObjectId(dvdDoc.cover);
@@ -125,7 +130,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
 
           coverCopy.related = normalizeRelatedIds(coverDoc.related);
 
-          result.cover = coverCopy;
+          result.cover = cleanForStrapi(coverCopy);
         }
       }
     } catch (error) {
@@ -177,7 +182,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
 
                 audioCopy.related = normalizeRelatedIds(audioDoc.related);
 
-                trackCopy.track = audioCopy;
+                trackCopy.track = cleanForStrapi(audioCopy);
               }
             }
           } catch (error) {
@@ -185,7 +190,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
           }
         }
 
-        tracksById.set(trackIdString, trackCopy);
+        tracksById.set(trackIdString, cleanForStrapi(trackCopy));
         logger('✅ Track adicionada ao Map:', trackIdString);
       }
 
@@ -227,7 +232,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
   // espelhando a ordem emitida pelo Strapi.
   result.id = dvdDoc._id.toString();
 
-  return result;
+  return cleanForStrapi(result);
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {

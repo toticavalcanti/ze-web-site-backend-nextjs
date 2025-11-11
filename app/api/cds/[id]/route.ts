@@ -42,6 +42,23 @@ function normalizeRelatedIds(related: unknown): string[] {
     .filter((value): value is string => Boolean(value));
 }
 
+function cleanForStrapi(obj: Record<string, unknown>): Record<string, unknown> {
+  const {
+    created_by,
+    updated_by,
+    deleted,
+    deletedAt,
+    deletedBy,
+    deletionReason,
+    relatedTo,
+    status,
+    publishedAt,
+    ...clean
+  } = obj;
+
+  return clean;
+}
+
 function resolveObjectId(value: unknown): Types.ObjectId | null {
   if (!value) return null;
   if (value instanceof Types.ObjectId) return value;
@@ -97,18 +114,6 @@ async function loadCd(identifier: string, { log = false } = {}) {
   // Garante que o campo `id` seja reinserido apenas ao final.
   delete result.id;
 
-  if (cdDoc.created_by) {
-    result.created_by = cdDoc.created_by instanceof Types.ObjectId
-      ? cdDoc.created_by.toString()
-      : cdDoc.created_by;
-  }
-
-  if (cdDoc.updated_by) {
-    result.updated_by = cdDoc.updated_by instanceof Types.ObjectId
-      ? cdDoc.updated_by.toString()
-      : cdDoc.updated_by;
-  }
-
   if (cdDoc.cover) {
     try {
       const coverId = resolveObjectId(cdDoc.cover);
@@ -120,7 +125,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
           coverCopy.related = normalizeRelatedIds(coverDoc.related);
 
-          result.cover = coverCopy;
+          result.cover = cleanForStrapi(coverCopy);
         }
       }
     } catch (error) {
@@ -202,7 +207,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
 
                 audioCopy.related = normalizeRelatedIds(audioDoc.related);
 
-                trackCopy.track = [audioCopy];
+                trackCopy.track = [cleanForStrapi(audioCopy)];
               }
             }
           } catch (error) {
@@ -214,7 +219,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
           trackCopy.track = [];
         }
 
-        tracksById.set(trackIdString, trackCopy);
+        tracksById.set(trackIdString, cleanForStrapi(trackCopy));
         logger('✅ Track adicionada ao Map:', trackIdString);
       }
 
@@ -256,7 +261,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
   // espelhando a ordem emitida pelo Strapi.
   result.id = cdDoc._id.toString();
 
-  return result;
+  return cleanForStrapi(result);
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
