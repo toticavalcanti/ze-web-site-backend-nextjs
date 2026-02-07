@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
@@ -14,6 +14,14 @@ interface HeaderProps {
 
 export function Header({ name, email, role }: HeaderProps) {
   const [isPending, startTransition] = useTransition();
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  // TODO: Implement real notification system
+  // - Create Notification model in MongoDB
+  // - Add /api/notifications endpoint
+  // - Fetch notifications with polling or WebSockets
+  // - Update notificationCount with real data
+  const notificationCount = 0;
 
   const displayName = useMemo(() => {
     if (!name) return email ?? 'Administrador';
@@ -49,18 +57,49 @@ export function Header({ name, email, role }: HeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-slate-500 shadow-md transition hover:border-purple-200 hover:text-purple-600"
-          aria-label="Ver notificações"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-[10px] font-semibold text-white shadow-lg">
-            3
-          </span>
-        </motion.button>
+        <div className="relative">
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/80 text-slate-500 shadow-md transition hover:border-purple-200 hover:text-purple-600"
+            aria-label="Ver notificações"
+          >
+            <Bell className="h-4 w-4" />
+            {notificationCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-[10px] font-semibold text-white shadow-lg">
+                {notificationCount}
+              </span>
+            )}
+          </motion.button>
+          <AnimatePresence>
+            {showNotifications && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowNotifications(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 top-14 z-50 w-80 rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl backdrop-blur-xl"
+                >
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900">Notificações</h3>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Bell className="mb-3 h-12 w-12 text-slate-300" />
+                    <p className="text-sm text-slate-500">Sem notificações no momento</p>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
         <Button
           className="rounded-2xl bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 px-6 py-2 text-sm font-semibold text-white shadow-lg transition hover:brightness-110"
           onClick={() =>
