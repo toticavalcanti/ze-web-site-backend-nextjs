@@ -99,13 +99,17 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Show não encontrado' }, { status: 404 });
   }
 
-  const coverId = show.cover?.toString();
-  await show.deleteOne();
+  // Soft delete: mark as 'realizado' instead of physical deletion
+  // This preserves historical data and allows recovery
+  show.set('showStatus', 'realizado');
+  show.set('updated_by', authResult.session.user!.id);
+  await show.save();
 
-  if (coverId) {
-    await detachFile(coverId, show._id);
-    await deleteFileIfOrphan(coverId);
-  }
+  // Note: Cover file remains attached (no orphan cleanup for soft delete)
 
-  return NextResponse.json({ message: 'Show removido' });
+  return NextResponse.json({
+    message: 'Show marcado como realizado (soft delete)',
+    id: params.id,
+    showStatus: 'realizado'
+  });
 }

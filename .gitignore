@@ -16,6 +16,9 @@ build/
 .turbo/
 .vercel/
 
+# Antigravity / Agents
+.agent/
+
 # === Environment files ===
 env
 .env.local

@@ -4,11 +4,12 @@ const MessageSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true },
-    city: { type: String, required: true, trim: true },
-    state: { type: String, required: true, trim: true },
-    message: { type: String, required: true },
+    city: { type: String, required: false, trim: true },
+    state: { type: String, required: false, trim: true },
+    message: { type: String, required: false },
     response: { type: String, default: '' },
     published: { type: Boolean, default: false },
+    private: { type: Boolean, default: false },
     created_by: { type: Types.ObjectId, ref: 'Admin' }
   },
   { timestamps: true }

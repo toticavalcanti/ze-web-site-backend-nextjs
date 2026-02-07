@@ -14,7 +14,8 @@ function formatMessage(doc: Record<string, unknown> | null) {
     response: typeof normalized.response === 'string' ? normalized.response : '',
     published: typeof normalized.published === 'boolean'
       ? normalized.published
-      : normalized.status === 'published'
+      : normalized.status === 'published',
+    private: typeof normalized.private === 'boolean' ? normalized.private : false
   } as Record<string, unknown>;
   return withPublishedFlag(withDefaults);
 }
@@ -84,6 +85,7 @@ export async function GET(request: Request) {
 
   if (!isAdminRequest) {
     filters.push({ published: true });
+    filters.push({ private: { $ne: true } });
   }
 
   const filter: Record<string, unknown> = filters.length ? { $and: filters } : {};
@@ -123,14 +125,16 @@ export async function POST(request: Request) {
     const session = await auth();
 
     await connectMongo();
+    // Force published=false (moderation workflow - same as Strapi v3)
     const payload = {
       name: parsed.data.name.trim(),
       email: parsed.data.email.trim(),
-      city: parsed.data.city.trim(),
-      state: parsed.data.state.trim(),
-      message: parsed.data.message.trim(),
+      city: parsed.data.city?.trim() ?? '',
+      state: parsed.data.state?.trim() ?? '',
+      message: parsed.data.message?.trim() ?? '',
       response: parsed.data.response?.trim() ?? '',
-      published: false
+      published: false,
+      private: parsed.data.private ?? false
     } as Record<string, unknown>;
 
     if (session?.user?.id) {

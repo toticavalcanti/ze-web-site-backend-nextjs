@@ -102,6 +102,18 @@ export async function GET(request: Request) {
     andFilters.push({ date: { $gte: new Date() } });
   }
 
+  // Soft delete filter: exclude 'realizado' shows by default
+  // Use ?showStatus=all to see all (admin), or ?showStatus=realizado to see only realized
+  const showStatusParam = searchParams.get('showStatus');
+  if (showStatusParam === 'all') {
+    // Admin mode: show everything
+  } else if (showStatusParam === 'realizado' || showStatusParam === 'cancelado') {
+    andFilters.push({ showStatus: showStatusParam });
+  } else {
+    // Default: exclude realizado (soft deleted) shows
+    andFilters.push({ $or: [{ showStatus: { $ne: 'realizado' } }, { showStatus: { $exists: false } }] });
+  }
+
   const filter: Record<string, unknown> = andFilters.length ? { $and: andFilters } : {};
 
   await connectMongo();

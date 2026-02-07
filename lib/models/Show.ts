@@ -17,6 +17,11 @@ const ShowSchema = new Schema(
     description: String,
     banner: [{ type: Types.ObjectId, ref: 'UploadFile' }],
     cover: { type: Types.ObjectId, ref: 'UploadFile' },
+    showStatus: {
+      type: String,
+      enum: ['scheduled', 'realizado', 'cancelado'],
+      default: 'scheduled'
+    },
     published_at: { type: Date, default: null },
     created_by: { type: Types.ObjectId, ref: 'Admin' },
     updated_by: { type: Types.ObjectId, ref: 'Admin' }
