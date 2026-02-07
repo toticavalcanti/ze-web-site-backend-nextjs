@@ -243,9 +243,7 @@ export function Sidebar({ role = 'admin', name, email }: SidebarProps) {
             Acesse a central de suporte para tutoriais e dicas rápidas sobre como gerenciar o conteúdo.
           </p>
           <Link
-            href="https://ze-ramalho.com.br/suporte"
-            target="_blank"
-            rel="noreferrer"
+            href="/suporte"
             className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:brightness-110"
           >
             Abrir suporte
