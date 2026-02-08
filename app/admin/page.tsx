@@ -10,7 +10,6 @@ import MessageModel from '@/lib/models/Message';
 import PhotoModel from '@/lib/models/Photo';
 import ShowModel from '@/lib/models/Show';
 import TextModel from '@/lib/models/Text';
-import { getCloudinaryUsage } from '@/lib/cloudinary';
 import { DashboardContent } from './_components/dashboard-content';
 
 type LatestDocument = { title?: string | null; updatedAt?: Date | null };
@@ -103,8 +102,6 @@ async function getStats() {
     })
     .slice(0, 5);
 
-  const cloudinaryUsage = await getCloudinaryUsage().catch(() => null);
-
   return {
     books: { total: booksTotal, published: booksPublished },
     cds: { total: cdsTotal, published: cdsPublished },
@@ -121,14 +118,7 @@ async function getStats() {
       total: cdComponentTracks + dvdComponentTracks
     },
     latest,
-    cloudinary: cloudinaryUsage
-      ? {
-          storage: cloudinaryUsage.storage,
-          bandwidth: cloudinaryUsage.bandwidth,
-          resources: cloudinaryUsage.resources,
-          lastUpdated: cloudinaryUsage.lastUpdated ?? null
-        }
-      : null
+    cloudinary: null // Client-side will fetch this
   } as const;
 }
 

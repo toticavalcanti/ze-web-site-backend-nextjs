@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 interface HeaderProps {
   name?: string | null;
@@ -15,13 +16,27 @@ interface HeaderProps {
 export function Header({ name, email, role }: HeaderProps) {
   const [isPending, startTransition] = useTransition();
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  // TODO: Implement real notification system
-  // - Create Notification model in MongoDB
-  // - Add /api/notifications endpoint
-  // - Fetch notifications with polling or WebSockets
-  // - Update notificationCount with real data
-  const notificationCount = 0;
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Poll for notifications every 30 seconds
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch('/api/admin/notifications/unread-count');
+        if (res.ok) {
+          const data = await res.json();
+          setNotificationCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    };
+
+    fetchNotifications(); // Initial fetch
+    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+
+    return () => clearInterval(interval);
+  }, []);
 
   const displayName = useMemo(() => {
     if (!name) return email ?? 'Administrador';
@@ -91,10 +106,31 @@ export function Header({ name, email, role }: HeaderProps) {
                   className="absolute right-0 top-14 z-50 w-80 rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl backdrop-blur-xl"
                 >
                   <h3 className="mb-3 text-sm font-semibold text-slate-900">Notificações</h3>
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Bell className="mb-3 h-12 w-12 text-slate-300" />
-                    <p className="text-sm text-slate-500">Sem notificações no momento</p>
-                  </div>
+                  {notificationCount > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 rounded-xl bg-purple-50 p-4">
+                        <Bell className="h-8 w-8 text-purple-500" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900">
+                            Você tem {notificationCount} {notificationCount === 1 ? 'mensagem pendente' : 'mensagens pendentes'}
+                          </p>
+                          <p className="text-xs text-slate-500">Aguardando publicação</p>
+                        </div>
+                      </div>
+                      <Link
+                        href="/admin/messages"
+                        onClick={() => setShowNotifications(false)}
+                        className="block w-full rounded-lg bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 px-4 py-2 text-center text-sm font-semibold text-white transition hover:brightness-110"
+                      >
+                        Ver mensagens
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Bell className="mb-3 h-12 w-12 text-slate-300" />
+                      <p className="text-sm text-slate-500">Sem notificações no momento</p>
+                    </div>
+                  )}
                 </motion.div>
               </>
             )}

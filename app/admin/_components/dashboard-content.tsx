@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowUpRight,
@@ -110,6 +110,43 @@ const chartGradient = (
 );
 
 export function DashboardContent({ stats }: DashboardContentProps) {
+  const [cloudinaryData, setCloudinaryData] = useState<CloudinaryStats | null>(stats.cloudinary);
+  const [cloudinaryLoading, setCloudinaryLoading] = useState(false);
+  const [cloudinaryError, setCloudinaryError] = useState(false);
+
+  // Fetch Cloudinary usage client-side
+  useEffect(() => {
+    const fetchCloudinaryUsage = async () => {
+      setCloudinaryLoading(true);
+      setCloudinaryError(false);
+      
+      try {
+        const res = await fetch('/api/admin/cloudinary/usage');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.available === false) {
+            setCloudinaryError(true);
+          } else {
+            setCloudinaryData({
+              storage: data.storage,
+              bandwidth: data.bandwidth,
+              resources: data.resources,
+              lastUpdated: data.lastUpdated
+            });
+          }
+        } else {
+          setCloudinaryError(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Cloudinary usage:', error);
+        setCloudinaryError(true);
+      } finally {
+        setCloudinaryLoading(false);
+      }
+    };
+
+    fetchCloudinaryUsage();
+  }, []);
   const navCards = useMemo(
     () => [
       {
@@ -413,12 +450,21 @@ export function DashboardContent({ stats }: DashboardContentProps) {
                   <Cloud className="h-6 w-6" />
                 </span>
               </div>
-              {stats.cloudinary ? (
+              {cloudinaryLoading ? (
+                <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/40 p-6 text-center text-sm text-slate-500">
+                  <p className="font-medium text-slate-600">Carregando dados do Cloudinary...</p>
+                </div>
+              ) : cloudinaryError ? (
+                <div className="rounded-2xl border border-dashed border-red-200 bg-red-50/40 p-6 text-center text-sm text-slate-500">
+                  <p className="font-medium text-slate-600">Indisponível</p>
+                  <p className="mt-2 text-xs text-slate-400">Não foi possível carregar os dados do Cloudinary.</p>
+                </div>
+              ) : cloudinaryData ? (
                 <div className="space-y-5 text-sm text-slate-600">
                   {[{ key: 'storage', label: 'Armazenamento' }, { key: 'bandwidth', label: 'Banda' }, { key: 'resources', label: 'Recursos' }].map((metric) => {
-                    const metricValue = stats.cloudinary?.[metric.key as keyof CloudinaryStats] as CloudMetric | undefined;
+                    const metricValue = cloudinaryData?.[metric.key as keyof CloudinaryStats] as CloudMetric | undefined;
                     const limit = metricValue?.limit ?? null;
-                    const percent = metricValue?.usedPercent ?? (limit ? (metricValue.usage / limit) * 100 : 0);
+                    const percent = metricValue?.usedPercent ?? (limit && metricValue ? (metricValue.usage / limit) * 100 : 0);
                     const formattedUsage = metric.key === 'resources'
                       ? new Intl.NumberFormat('pt-BR').format(metricValue?.usage ?? 0)
                       : formatDataSize(metricValue?.usage ?? 0);
@@ -432,24 +478,23 @@ export function DashboardContent({ stats }: DashboardContentProps) {
                       <div key={metric.key} className="space-y-2">
                         <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
                           <span>{metric.label}</span>
-                          <span>{percent ? percent.toFixed(1) : '0.0'}%</span>
+                          {limit && <span>{percent ? percent.toFixed(1) : '0.0'}%</span>}
                         </div>
-                        <Progress value={percent ?? 0} />
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{formattedUsage}</span>
-                          <span>{formattedLimit ? `Limite: ${formattedLimit}` : 'Limite não definido'}</span>
+                        {limit && <Progress value={percent ?? 0} />}
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-semibold text-slate-700">{formattedUsage}</span>
+                          {formattedLimit && <span className="text-xs text-slate-500">Limite: {formattedLimit}</span>}
                         </div>
                       </div>
                     );
                   })}
-                  {stats.cloudinary.lastUpdated && (
-                    <p className="text-xs text-slate-400">Atualizado em {format(new Date(stats.cloudinary.lastUpdated), "dd MMM 'às' HH:mm", { locale: ptBR })}</p>
+                  {cloudinaryData.lastUpdated && (
+                    <p className="text-xs text-slate-400">Atualizado em {format(new Date(cloudinaryData.lastUpdated), "dd MMM 'às' HH:mm", { locale: ptBR })}</p>
                   )}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/40 p-6 text-center text-sm text-slate-500">
-                  <p className="font-medium text-slate-600">Não foi possível carregar os dados do Cloudinary.</p>
-                  <p className="mt-2 text-xs text-slate-400">Verifique a integração e tente novamente em alguns minutos.</p>
+                  <p className="font-medium text-slate-600">Nenhum dado disponível.</p>
                 </div>
               )}
             </div>

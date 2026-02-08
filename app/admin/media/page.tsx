@@ -9,9 +9,10 @@ import {
   Copy,
   ImageIcon,
   Loader2,
+  Music,
   RefreshCw,
-  Trash2,
   UploadCloud,
+  Video,
   View
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -116,6 +117,20 @@ function isImage(asset: MediaAsset) {
   return asset.type === 'image';
 }
 
+function isAudio(asset: MediaAsset) {
+  if (asset.mime?.startsWith('audio/')) {
+    return true;
+  }
+  return asset.type === 'audio';
+}
+
+function isVideo(asset: MediaAsset) {
+  if (asset.mime?.startsWith('video/')) {
+    return true;
+  }
+  return asset.type === 'video';
+}
+
 function getAssetTypeLabel(asset: MediaAsset) {
   if (asset.type) {
     return asset.type
@@ -146,7 +161,6 @@ export default function MediaLibraryPage() {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
-  const [assetToDelete, setAssetToDelete] = useState<MediaAsset | null>(null);
 
   const cloudinaryPublicId =
     selectedAsset?.cloudinaryId || selectedAsset?.provider_metadata?.public_id || null;
@@ -275,30 +289,7 @@ export default function MediaLibraryPage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!assetToDelete) return;
 
-    try {
-      const response = await fetch(`/api/upload/${assetToDelete._id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error || 'Erro ao remover arquivo');
-        return;
-      }
-
-      toast.success('Arquivo removido');
-      if (assets.length <= 1 && page > 1) {
-        setPage((current) => Math.max(1, current - 1));
-      } else {
-        await fetchAssets();
-      }
-    } catch (error) {
-      console.error('Failed to delete asset', error);
-      toast.error('Erro ao remover arquivo');
-    } finally {
-      setAssetToDelete(null);
-    }
-  };
 
   const paginationInfo = useMemo(() => {
     if (totalItems === 0) {
@@ -499,13 +490,13 @@ export default function MediaLibraryPage() {
 
         <div>
           {loading ? (
-            <div className="columns-1 gap-6 sm:columns-2 xl:columns-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: Math.min(pageSize, 12) }).map((_, index) => (
                 <div
                   key={index}
-                  className="mb-6 break-inside-avoid rounded-3xl border border-white/70 bg-white/80 p-4 shadow-lg backdrop-blur"
+                  className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-lg backdrop-blur"
                 >
-                  <Skeleton className="mb-3 aspect-[4/3] w-full rounded-2xl" />
+                  <Skeleton className="mb-3 aspect-square w-full rounded-2xl" />
                   <Skeleton className="mb-2 h-4 w-3/4 rounded-full" />
                   <Skeleton className="h-3 w-1/2 rounded-full" />
                 </div>
@@ -531,45 +522,53 @@ export default function MediaLibraryPage() {
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              <div className="columns-1 gap-6 sm:columns-2 xl:columns-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {assets.map((asset) => (
                   <motion.div
                     key={asset._id}
                     layout
                     layoutId={asset._id}
-                    whileHover={{ y: -6 }}
-                    className="group relative mb-6 break-inside-avoid overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-xl transition-all duration-500 hover:shadow-2xl"
+                    whileHover={{ y: -4 }}
+                    className="group relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-lg transition-all duration-300 hover:shadow-xl"
                   >
                     <button
                       type="button"
                       onClick={() => setSelectedAsset(asset)}
-                      className="relative block aspect-[4/3] w-full overflow-hidden"
+                      className="relative block aspect-square w-full overflow-hidden"
                     >
                       {isImage(asset) ? (
                         <Image
                           src={asset.url}
                           alt={asset.name}
                           fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
+                      ) : isVideo(asset) ? (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600">
+                          <Video className="h-12 w-12" />
+                        </div>
+                      ) : isAudio(asset) ? (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600">
+                          <Music className="h-12 w-12" />
+                        </div>
                       ) : (
                         <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
                           <ImageIcon className="h-10 w-10" />
                         </div>
                       )}
                       <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition duration-300 group-hover:opacity-100">
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-lg">
-                          <View className="h-4 w-4" /> Visualizar
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-lg">
+                          <View className="h-3.5 w-3.5" /> Visualizar
                         </span>
                       </div>
                     </button>
-                    <div className="flex flex-col gap-4 p-5">
+                    <div className="flex flex-col gap-3 p-4">
                       <div className="space-y-1">
                         <p className="truncate text-sm font-semibold text-slate-800">{asset.name}</p>
                         <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{getAssetTypeLabel(asset)}</p>
                       </div>
-                      <div className="space-y-1 text-xs text-slate-500">
+                      <div className="space-y-0.5 text-xs text-slate-500">
                         <p>Tamanho: {formatFileSize(asset.size)}</p>
                         <p>Upload: {formatDate(asset.createdAt)}</p>
                       </div>
@@ -578,17 +577,9 @@ export default function MediaLibraryPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => void handleCopyUrl(asset)}
-                          className="rounded-full border-purple-200 bg-white/80 px-3 py-1 font-medium text-purple-600 shadow-sm hover:border-purple-300"
+                          className="w-full rounded-full border-purple-200 bg-white/80 px-3 py-1 font-medium text-purple-600 shadow-sm hover:border-purple-300"
                         >
                           <Copy className="mr-1 h-3.5 w-3.5" /> Copiar URL
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setAssetToDelete(asset)}
-                          className="ml-auto rounded-full bg-red-500/90 px-3 py-1 text-white shadow-md hover:bg-red-500"
-                        >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" /> Remover
                         </Button>
                       </div>
                     </div>
@@ -625,17 +616,18 @@ export default function MediaLibraryPage() {
       </div>
 
       <Dialog open={Boolean(selectedAsset)} onOpenChange={(open) => !open && setSelectedAsset(null)}>
-        <DialogContent className="max-w-5xl overflow-hidden rounded-3xl border border-white/70 bg-white/90 p-0 shadow-2xl backdrop-blur-xl">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-2xl backdrop-blur-xl">
           {selectedAsset && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedAsset.name}</DialogTitle>
+            <div className="max-h-[calc(90vh-2rem)] overflow-y-auto">
+              <>
+              <DialogHeader className="px-6 pt-6">
+                <DialogTitle className="text-2xl font-bold">{selectedAsset.name}</DialogTitle>
                 <DialogDescription>Detalhes do arquivo na biblioteca de mídia</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-                <div className="overflow-hidden rounded-lg border bg-muted">
+              <div className="flex flex-col gap-6 p-6">
+                <div className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-50 shadow-inner">
                   {isImage(selectedAsset) ? (
-                    <div className="relative aspect-[4/3]">
+                    <div className="relative aspect-[4/3] bg-slate-100">
                       <Image
                         src={selectedAsset.url}
                         alt={selectedAsset.name}
@@ -644,10 +636,33 @@ export default function MediaLibraryPage() {
                         className="object-contain"
                       />
                     </div>
+                  ) : isVideo(selectedAsset) ? (
+                    <div className="flex min-h-[400px] items-center justify-center bg-black p-6">
+                      <video
+                        controls
+                        className="max-h-[500px] w-full rounded-lg shadow-2xl"
+                        src={selectedAsset.url}
+                        preload="metadata"
+                      >
+                        Seu navegador não suporta reprodução de vídeo.
+                      </video>
+                    </div>
+                  ) : isAudio(selectedAsset) ? (
+                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-6 bg-gradient-to-br from-purple-50 to-pink-50 p-12">
+                      <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 text-white shadow-2xl">
+                        <Music className="h-16 w-16" />
+                      </div>
+                      <div className="w-full max-w-md">
+                        <audio controls className="w-full" src={selectedAsset.url} preload="metadata">
+                          Seu navegador não suporta reprodução de áudio.
+                        </audio>
+                      </div>
+                      <p className="text-sm font-medium text-slate-600">{selectedAsset.name}</p>
+                    </div>
                   ) : (
-                    <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-3 p-6 text-muted-foreground">
-                      <ImageIcon className="h-12 w-12" />
-                      <p className="text-sm">Pré-visualização indisponível para este tipo de arquivo.</p>
+                    <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-3 p-6 text-slate-400">
+                      <ImageIcon className="h-16 w-16" />
+                      <p className="text-sm font-medium">Pré-visualização indisponível para este tipo de arquivo.</p>
                     </div>
                   )}
                 </div>
@@ -703,43 +718,16 @@ export default function MediaLibraryPage() {
                     >
                       <Copy className="mr-2 h-4 w-4" /> Copiar URL
                     </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => setAssetToDelete(selectedAsset)}
-                      className="rounded-2xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-red-500"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Remover arquivo
-                    </Button>
                   </div>
                 </div>
               </div>
-            </>
+              </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(assetToDelete)} onOpenChange={(open) => !open && setAssetToDelete(null)}>
-        <DialogContent className="max-w-md rounded-3xl border border-white/70 bg-white/90 shadow-2xl backdrop-blur-xl">
-          <DialogHeader>
-            <DialogTitle>Remover arquivo</DialogTitle>
-            <DialogDescription>
-              Tem certeza de que deseja remover permanentemente este arquivo? Essa ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssetToDelete(null)} className="rounded-full border-purple-200 px-4 py-2 text-sm font-semibold text-slate-600">
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void confirmDelete()}
-              className="rounded-full bg-red-500/90 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-red-500"
-            >
-              Remover
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </motion.div>
   );
 }
