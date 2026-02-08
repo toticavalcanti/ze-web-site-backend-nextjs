@@ -32,7 +32,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  return NextResponse.json(formatMessage(message));
+  return NextResponse.json(formatMessage(message as Record<string, unknown> | null));
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -62,8 +62,28 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     await message.save();
 
+    // Strapi v3 lifecycle hook parity: afterUpdate email notification
+    // If message is marked as private, send email to user with response
+    if (message.private && message.response) {
+      // Non-blocking: don't await, don't fail request if email fails
+      import('@/lib/email')
+        .then(({ sendEmail }) => {
+          return sendEmail({
+            to: message.email,
+            subject: 'Site Zé Ramalho',
+            text: message.response
+          });
+        })
+        .then(() => {
+          console.log(`✅ Email enviado para: ${message.email}`);
+        })
+        .catch((emailError) => {
+          console.error(`❌ Erro ao enviar email para ${message.email}:`, emailError);
+        });
+    }
+
     const updated = await MessageModel.findById(message._id).lean();
-    return NextResponse.json(formatMessage(updated));
+    return NextResponse.json(formatMessage(updated as Record<string, unknown> | null));
   } catch (error) {
     console.error('Message update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });
