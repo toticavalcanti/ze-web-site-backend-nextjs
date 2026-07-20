@@ -514,8 +514,8 @@ export default function NewDvdPage() {
                       <div className="space-y-2">
                         <Label>Áudio</Label>
                         <AudioUpload
-                          value={track.audioFile ? [track.audioFile] : []}
-                          onChange={(files) => updateTrack(track.id, 'audioFile', files[0] ?? null)}
+                          value={track.audioFile ?? undefined}
+                          onChange={(file) => updateTrack(track.id, 'audioFile', file)}
                           folder="dvds/tracks"
                         />
                       </div>

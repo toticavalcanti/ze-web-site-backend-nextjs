@@ -32,7 +32,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string; tra
 
   const audioId = track.track?.toString();
 
-  cd.track = (cd.track || []).filter((item) => {
+  cd.track = (cd.track || []).filter((item: any) => {
     if (item && typeof item === 'object' && 'ref' in (item as Record<string, unknown>)) {
       const refValue = (item as { ref?: unknown }).ref;
       return refValue?.toString() !== params.trackId;

@@ -21,10 +21,10 @@ async function fixPublishedCds() {
 
     const publishedFilter = {
       $or: [{ published_at: { $ne: null } }, { publishedAt: { $ne: null } }]
-    } as const;
+    };
     const statusMismatchFilter = {
       $or: [{ status: { $exists: false } }, { status: { $ne: 'published' } }]
-    } as const;
+    };
 
     const cdsToFix = await CdModel.find({
       $and: [publishedFilter, statusMismatchFilter]

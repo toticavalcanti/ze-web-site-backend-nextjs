@@ -5,14 +5,22 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { forgotPasswordSchema, resetPasswordSchema } from '@/lib/validations/auth';
+import { forgotPasswordSchema } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const requestSchema = forgotPasswordSchema;
-const resetSchema = resetPasswordSchema.pick({ password: true, confirmPassword: true });
+const resetSchema = z
+  .object({
+    password: z.string().min(8),
+    confirmPassword: z.string().min(8)
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas não coincidem'
+  });
 
 type RequestValues = z.infer<typeof requestSchema>;
 type ResetValues = z.infer<typeof resetSchema>;

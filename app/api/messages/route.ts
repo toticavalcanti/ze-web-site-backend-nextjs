@@ -3,6 +3,7 @@ import { connectMongo } from '@/lib/mongodb';
 import MessageModel from '@/lib/models/Message';
 import { messageSchema } from '@/lib/validations/message';
 import { auth } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { buildPaginatedResponse, buildRegexFilter, normalizeDocument, parseLegacyPagination, withPublishedFlag } from '@/lib/legacy';
 
 function formatMessage(doc: Record<string, unknown> | null) {
@@ -117,12 +118,32 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    // Honeypot anti-spam: o form do site inclui um campo "website" invisível
+    // para humanos. Bots que o preenchem recebem um 201 falso e nada é salvo.
+    if (typeof body?.website === 'string' && body.website.trim() !== '') {
+      return NextResponse.json({ ok: true }, { status: 201 });
+    }
+
     const parsed = messageSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
 
     const session = await auth();
+    const isAdminRequest = Boolean(session?.user && (session.user.role === 'admin' || session.user.role === 'super_admin'));
+
+    // Rate limit por IP para o público (admins ficam isentos): 3 mensagens/hora.
+    if (!isAdminRequest) {
+      const ip = getClientIp(request);
+      const rate = await checkRateLimit(`messages:${ip}`, 3, 60 * 60 * 1000);
+      if (!rate.allowed) {
+        return NextResponse.json(
+          { error: 'Muitas mensagens enviadas. Tente novamente mais tarde.' },
+          { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+        );
+      }
+    }
 
     await connectMongo();
     // Force published=false (moderation workflow - same as Strapi v3)
@@ -144,7 +165,7 @@ export async function POST(request: Request) {
     const message = await MessageModel.create(payload);
 
     const created = await MessageModel.findById(message._id).lean();
-    return NextResponse.json(formatMessage(created), { status: 201 });
+    return NextResponse.json(formatMessage(created as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('Message create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

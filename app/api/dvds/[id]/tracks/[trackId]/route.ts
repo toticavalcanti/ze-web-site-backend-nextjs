@@ -19,7 +19,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string; tra
     return NextResponse.json({ error: 'DVD não encontrado' }, { status: 404 });
   }
 
-  dvd.track = (dvd.track || []).filter((item) => item.ref?.toString() !== params.trackId);
+  dvd.track = (dvd.track || []).filter((item: any) => item.ref?.toString() !== params.trackId);
   dvd.updated_by = authResult.session.user!.id;
   await dvd.save();
 

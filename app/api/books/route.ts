@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     const created = await BookModel.findById(book._id).populate('cover').lean();
-    return NextResponse.json(formatBook(created), { status: 201 });
+    return NextResponse.json(formatBook(created as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('Book create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

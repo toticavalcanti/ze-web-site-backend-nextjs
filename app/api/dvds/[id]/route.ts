@@ -38,7 +38,7 @@ function normalizeRelatedIds(related: unknown): string[] {
 
       return entry.toString();
     })
-    .filter((value): value is string => Boolean(value));
+    .filter((value: any): value is string => Boolean(value));
 }
 
 function cleanForStrapi(obj: Record<string, unknown>): Record<string, unknown> {
@@ -96,7 +96,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
   const query = isId ? { _id: identifier } : { slug: identifier };
   logger('🔍 Query:', query);
 
-  const dvdDoc = await DvdModel.findOne(query).lean().exec();
+  const dvdDoc = await DvdModel.findOne(query).lean<Record<string, any>>().exec();
 
   logger('🔍 DVD encontrado?', Boolean(dvdDoc));
   if (log) {
@@ -123,7 +123,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
     try {
       const coverId = resolveObjectId(dvdDoc.cover);
       if (coverId) {
-        const coverDoc = await UploadFileModel.findOne({ _id: coverId, deleted: { $ne: true } }).lean().exec();
+        const coverDoc = await UploadFileModel.findOne({ _id: coverId, deleted: { $ne: true } }).lean<Record<string, any>>().exec();
         if (coverDoc) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
@@ -149,19 +149,19 @@ async function loadDvd(identifier: string, { log = false } = {}) {
     try {
       const trackIds = dvdDoc.track
         .map((entry) => resolveObjectId(entry))
-        .filter((value): value is Types.ObjectId => Boolean(value));
+        .filter((value: any): value is Types.ObjectId => Boolean(value));
 
       logger('🔍 Total de track IDs no DVD:', trackIds.length);
-      logger('🔍 IDs das tracks:', trackIds.map((id) => id.toString()));
+      logger('🔍 IDs das tracks:', trackIds.map((id: any) => id.toString()));
 
-      const tracks = await DvdTrackModel.find({ _id: { $in: trackIds } }).lean().exec();
+      const tracks = await DvdTrackModel.find({ _id: { $in: trackIds } }).lean<Record<string, any>[]>().exec();
       logger('📊 Tracks encontrados no DB:', tracks.length);
       logger('📊 Tracks esperadas:', trackIds.length);
 
       if (tracks.length !== trackIds.length) {
         const foundIds = new Set(tracks.map((track) => track._id.toString()));
         const missingIds = trackIds
-          .map((id) => id.toString())
+          .map((id: any) => id.toString())
           .filter((id) => !foundIds.has(id));
         logger('⚠️ Tracks não encontradas:', missingIds);
       }
@@ -180,7 +180,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
           try {
             const audioId = resolveObjectId(track.track);
             if (audioId) {
-              const audioDoc = await UploadFileModel.findOne({ _id: audioId, deleted: { $ne: true } }).lean().exec();
+              const audioDoc = await UploadFileModel.findOne({ _id: audioId, deleted: { $ne: true } }).lean<Record<string, any>>().exec();
               if (audioDoc) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
@@ -203,7 +203,7 @@ async function loadDvd(identifier: string, { log = false } = {}) {
       logger('🗺️ Total no Map:', tracksById.size);
 
       const orderedTracks = trackIds
-        .map((id) => {
+        .map((id: any) => {
           const trackId = id.toString();
           const track = tracksById.get(trackId);
 
@@ -389,9 +389,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
 
       const oldTrackIds = (dvd.track ?? [])
-        .map((value) => resolveObjectId(value))
-        .filter((value): value is Types.ObjectId => Boolean(value))
-        .map((value) => value.toString());
+        .map((value: any) => resolveObjectId(value))
+        .filter((value: any): value is Types.ObjectId => Boolean(value))
+        .map((value: any) => value.toString());
 
       for (const oldId of oldTrackIds) {
         if (!keepTrackIds.includes(oldId)) {
@@ -460,9 +460,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   const coverId = dvd.cover?.toString();
   const trackIds = (dvd.track ?? [])
-    .map((value) => resolveObjectId(value))
-    .filter((value): value is Types.ObjectId => Boolean(value))
-    .map((value) => value.toString());
+    .map((value: any) => resolveObjectId(value))
+    .filter((value: any): value is Types.ObjectId => Boolean(value))
+    .map((value: any) => value.toString());
 
   const tracks = trackIds.length ? await DvdTrackModel.find({ _id: { $in: trackIds } }) : [];
 

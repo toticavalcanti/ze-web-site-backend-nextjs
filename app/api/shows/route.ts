@@ -29,8 +29,15 @@ function formatShow(doc: Record<string, unknown> | null, now = Date.now()) {
   const normalizedBannerList = normalizeUploadFileList((doc as { banner?: unknown }).banner);
   const coverBanner = normalizeUploadFile(cover);
   const primaryBanner = normalizedBannerList[0] ?? coverBanner;
+  // Aliases legados (Strapi v3) para o frontend público, que lê cidade/estado/local.
+  const cidade = (base.cidade as string | undefined) ?? (base.city as string | undefined);
+  const estado = (base.estado as string | undefined) ?? (base.state as string | undefined);
+  const local = (base.local as string | undefined) ?? (base.venue as string | undefined);
   return {
     ...base,
+    cidade,
+    estado,
+    local,
     banner: normalizedBannerList,
     cover: primaryBanner,
     date: dateString ?? base.date,
@@ -165,7 +172,7 @@ export async function POST(request: Request) {
     }
 
     const created = await ShowModel.findById(show._id).populate('cover').lean();
-    return NextResponse.json(formatShow(created), { status: 201 });
+    return NextResponse.json(formatShow(created as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('Show create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

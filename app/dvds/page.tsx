@@ -29,12 +29,12 @@ async function getDvds(page: number) {
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
       .populate('cover')
-      .lean(),
+      .lean<Record<string, any>[]>(),
     DvdModel.countDocuments(filter)
   ]);
 
   const dvds: DvdCard[] = items
-    .map((item) => {
+    .map((item): DvdCard | null => {
       const id = item._id?.toString();
       const slug = (item as { slug?: string }).slug;
       if (!id || !slug) {
@@ -47,9 +47,9 @@ async function getDvds(page: number) {
         company: item.company ?? undefined,
         release_date: item.release_date ?? undefined,
         cover: normalizeUploadFile(item.cover) as DvdCard['cover']
-      } satisfies DvdCard;
+      };
     })
-    .filter((card): card is DvdCard => Boolean(card));
+    .filter((card: DvdCard | null): card is DvdCard => Boolean(card));
 
   return {
     dvds,

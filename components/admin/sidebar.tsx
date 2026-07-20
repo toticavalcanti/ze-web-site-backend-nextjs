@@ -14,6 +14,7 @@ import {
   Clapperboard,
   Disc3,
   FileText,
+  Globe,
   Image,
   Images,
   LayoutDashboard,
@@ -72,6 +73,12 @@ const baseSections: NavigationSection[] = [
     title: 'Mídia',
     links: [
       { href: '/admin/media', label: 'Biblioteca', icon: Images, gradient: 'from-sky-500 via-purple-500 to-pink-500' }
+    ]
+  },
+  {
+    title: 'Site',
+    links: [
+      { href: '/admin/site', label: 'Aparência & Biografia', icon: Globe, gradient: 'from-orange-500 to-amber-500' }
     ]
   }
 ];

@@ -34,7 +34,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  return NextResponse.json(formatClip(clip));
+  return NextResponse.json(formatClip(clip as Record<string, unknown> | null));
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -58,7 +58,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Clip não encontrado' }, { status: 404 });
     }
 
-    const previousCovers = (clip.cover || []).map((id) => id.toString());
+    const previousCovers = (clip.cover || []).map((id: any) => id.toString());
 
     Object.assign(clip, parsed.data, { updated_by: authResult.session.user!.id });
     if (parsed.data.cover) {
@@ -69,7 +69,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (parsed.data.cover) {
       const newCovers = parsed.data.cover;
-      const removed = previousCovers.filter((id) => !newCovers.includes(id));
+      const removed = previousCovers.filter((id: string) => !newCovers.includes(id));
       const added = newCovers.filter((id) => !previousCovers.includes(id));
 
       for (const fileId of added) {
@@ -82,7 +82,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     }
 
-    return NextResponse.json(formatClip(await serializeClip(clip._id.toString())));
+    return NextResponse.json(formatClip((await serializeClip(clip._id.toString())) as Record<string, unknown> | null));
   } catch (error) {
     console.error('Clip update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });
@@ -103,7 +103,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Clip não encontrado' }, { status: 404 });
   }
 
-  const coverIds = (clip.cover || []).map((id) => id.toString());
+  const coverIds = (clip.cover || []).map((id: any) => id.toString());
   await clip.deleteOne();
 
   for (const coverId of coverIds) {

@@ -200,7 +200,7 @@ async function ensureCdTracksHydrated(cd: AnyRecord | null | undefined) {
 function collectLyricIdsFromCd(cd: { track?: unknown[] }) {
   const ids = new Set<string>();
   for (const entry of cd.track ?? []) {
-    const track = (entry as { ref?: { lyric?: unknown } }).ref ?? entry;
+    const track = ((entry as { ref?: { lyric?: unknown } }).ref ?? entry) as { lyric?: unknown } | null | undefined;
     const rawLyric = track?.lyric as unknown;
     if (!rawLyric) continue;
     if (typeof rawLyric === 'string') {
@@ -226,16 +226,16 @@ async function buildLyricMap(ids: Set<string>) {
     return new Map<string, Record<string, unknown>>();
   }
 
-  const lyricDocs = await LyricModel.find({ _id: { $in: Array.from(ids) } }).lean();
+  const lyricDocs = await LyricModel.find({ _id: { $in: Array.from(ids) } }).lean<Record<string, any>[]>();
   return new Map(
     lyricDocs
-      .map((doc) => {
-        const normalized = normalizeDocument(doc);
+      .map((doc): readonly [string, Record<string, unknown>] | null => {
+        const normalized = normalizeDocument(doc) as Record<string, unknown> | null;
         const id = normalized?.id as string | undefined;
         if (!normalized || !id) return null;
         return [id, normalized] as const;
       })
-      .filter((entry): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
+      .filter((entry: readonly [string, Record<string, unknown>] | null): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
   );
 }
 
@@ -333,7 +333,7 @@ export async function GET(request: Request) {
 
   const lyricIds = new Set<string>();
   for (const cd of cds) {
-    const ids = collectLyricIdsFromCd(cd);
+    const ids = collectLyricIdsFromCd(cd as { track?: unknown[] });
     ids.forEach((id) => lyricIds.add(id));
   }
 
@@ -411,7 +411,7 @@ export async function POST(request: Request) {
       await attachFile({ fileId: cdData.cover, refId: cd._id, kind: 'Cd', field: 'cover' });
     }
 
-    return NextResponse.json(await formatCdForResponse(await serializeCd(cd._id.toString())), { status: 201 });
+    return NextResponse.json(await formatCdForResponse((await serializeCd(cd._id.toString())) as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('CD create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

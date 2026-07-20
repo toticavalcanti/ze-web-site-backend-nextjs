@@ -39,7 +39,7 @@ function normalizeRelatedIds(related: unknown): string[] {
 
       return entry.toString();
     })
-    .filter((value): value is string => Boolean(value));
+    .filter((value: any): value is string => Boolean(value));
 }
 
 function cleanForStrapi(obj: Record<string, unknown>): Record<string, unknown> {
@@ -91,7 +91,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
   const query = isId ? { _id: identifier } : { slug: identifier };
   logger('🔍 Query:', query);
 
-  const cdDoc = await CdModel.findOne(query).lean().exec();
+  const cdDoc = await CdModel.findOne(query).lean<Record<string, any>>().exec();
 
   logger('🔍 CD encontrado?', Boolean(cdDoc));
   if (log) {
@@ -118,7 +118,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
     try {
       const coverId = resolveObjectId(cdDoc.cover);
       if (coverId) {
-        const coverDoc = await UploadFileModel.findOne({ _id: coverId, deleted: { $ne: true } }).lean().exec();
+        const coverDoc = await UploadFileModel.findOne({ _id: coverId, deleted: { $ne: true } }).lean<Record<string, any>>().exec();
         if (coverDoc) {
           const coverCopy = JSON.parse(JSON.stringify(coverDoc)) as Record<string, unknown>;
           coverCopy.id = coverDoc._id.toString();
@@ -152,16 +152,16 @@ async function loadCd(identifier: string, { log = false } = {}) {
         .filter((value): value is Types.ObjectId => Boolean(value));
 
       logger('🔍 Total de track IDs no CD:', trackIds.length);
-      logger('🔍 IDs das tracks:', trackIds.map((id) => id.toString()));
+      logger('🔍 IDs das tracks:', trackIds.map((id: any) => id.toString()));
 
-      const tracks = await CdTrackModel.find({ _id: { $in: trackIds } }).lean().exec();
+      const tracks = await CdTrackModel.find({ _id: { $in: trackIds } }).lean<Record<string, any>[]>().exec();
       logger('📊 Tracks encontradas no DB:', tracks.length);
       logger('📊 Tracks esperadas:', trackIds.length);
 
       if (tracks.length !== trackIds.length) {
         const foundIds = new Set(tracks.map((track) => track._id.toString()));
         const missingIds = trackIds
-          .map((id) => id.toString())
+          .map((id: any) => id.toString())
           .filter((id) => !foundIds.has(id));
         logger('⚠️ Tracks não encontradas:', missingIds);
       }
@@ -180,7 +180,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
             if (lyricId) {
               const lyricDoc = await LyricModel.findById(lyricId)
                 .select('_id title slug composer content body text')
-                .lean();
+                .lean<Record<string, any>>();
               if (lyricDoc) {
                 trackCopy.lyric = {
                   _id: lyricDoc._id,
@@ -205,7 +205,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
           try {
             const audioId = resolveObjectId(track.track);
             if (audioId) {
-              const audioDoc = await UploadFileModel.findOne({ _id: audioId, deleted: { $ne: true } }).lean().exec();
+              const audioDoc = await UploadFileModel.findOne({ _id: audioId, deleted: { $ne: true } }).lean<Record<string, any>>().exec();
               if (audioDoc) {
                 const audioCopy = JSON.parse(JSON.stringify(audioDoc)) as Record<string, unknown>;
                 audioCopy.id = audioDoc._id.toString();
@@ -232,7 +232,7 @@ async function loadCd(identifier: string, { log = false } = {}) {
       logger('🗺️ Total no Map:', tracksById.size);
 
       const orderedTracks = trackIds
-        .map((id) => {
+        .map((id: any) => {
           const trackId = id.toString();
           const track = tracksById.get(trackId);
 
@@ -408,8 +408,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
 
       const oldTrackIds = (cd.track ?? [])
-        .map((value) => (typeof value === 'string' ? value : value?.toString()))
-        .filter((value): value is string => Boolean(value));
+        .map((value: any) => (typeof value === 'string' ? value : value?.toString()))
+        .filter((value: any): value is string => Boolean(value));
 
       for (const oldId of oldTrackIds) {
         if (!keepTrackIds.includes(oldId)) {
@@ -475,8 +475,8 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
 
   const coverId = cd.cover?.toString();
   const trackIds = (cd.track ?? [])
-    .map((value) => (typeof value === 'string' ? value : value?.toString()))
-    .filter((value): value is string => Boolean(value));
+    .map((value: any) => (typeof value === 'string' ? value : value?.toString()))
+    .filter((value: any): value is string => Boolean(value));
 
   const tracks = trackIds.length ? await CdTrackModel.find({ _id: { $in: trackIds } }) : [];
 

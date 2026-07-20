@@ -138,7 +138,7 @@ export async function GET(request: Request) {
       .sort(sort)
       .skip((page - 1) * pageSize)
       .limit(pageSize)
-      .lean<MediaDocument & { _id: Types.ObjectId }>()
+      .lean<(MediaDocument & { _id: Types.ObjectId; createdAt?: Date; updatedAt?: Date })[]>()
   ]);
 
   const data = mediaItems.map(({ _id, createdAt, updatedAt, ...rest }) => ({

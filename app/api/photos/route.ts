@@ -123,8 +123,8 @@ export async function GET(request: Request) {
   const uploadMap = await buildUploadMap(uploadIds);
 
   const formatted = photos
-    .map((photo) => formatPhoto(photo as Record<string, unknown>, { uploadMap }))
-    .filter((value): value is Record<string, unknown> => Boolean(value));
+    .map((photo): Record<string, unknown> | null => formatPhoto(photo as Record<string, unknown>, { uploadMap }))
+    .filter((value: Record<string, unknown> | null): value is Record<string, unknown> => Boolean(value));
 
   console.log('✅ Photos populados com imagens');
 
@@ -166,8 +166,8 @@ export async function POST(request: Request) {
     }
 
     const createdDoc = await PhotoModel.findById(photo._id).lean();
-    const uploadMap = await buildUploadMap(collectPhotoUploadIds(createdDoc));
-    return NextResponse.json(formatPhoto(createdDoc, { uploadMap }), { status: 201 });
+    const uploadMap = await buildUploadMap(collectPhotoUploadIds(createdDoc as { url?: unknown; image?: unknown } | null));
+    return NextResponse.json(formatPhoto(createdDoc as Record<string, unknown> | null, { uploadMap }), { status: 201 });
   } catch (error) {
     console.error('Photo create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

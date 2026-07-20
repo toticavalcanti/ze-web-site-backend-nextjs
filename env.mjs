@@ -11,7 +11,10 @@ const serverSchema = z.object({
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
   SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional()
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  EMAIL_REPLY_TO: z.string().optional(),
+  CRON_SECRET: z.string().optional()
 });
 
 const _server = serverSchema.safeParse(process.env);

@@ -18,7 +18,7 @@ async function getDvd(slug: string) {
     $or: [{ deleted: { $exists: false } }, { deleted: false }]
   })
     .populate('cover')
-    .lean();
+    .lean<Record<string, any>>();
 
   if (!dvdDoc) {
     return null;
@@ -26,7 +26,7 @@ async function getDvd(slug: string) {
 
   const trackIds = Array.isArray(dvdDoc.track)
     ? dvdDoc.track
-        .map((value) => {
+        .map((value: any) => {
           if (typeof value === 'string') return value;
           if (value && typeof value === 'object') {
             const entry = value as { _id?: unknown; id?: unknown; ref?: unknown };
@@ -40,13 +40,13 @@ async function getDvd(slug: string) {
           }
           return null;
         })
-        .filter((value): value is string => Boolean(value))
+        .filter((value: any): value is string => Boolean(value))
     : [];
 
   const tracks = trackIds.length
     ? await DvdTrackModel.find({ _id: { $in: trackIds } })
         .populate('track')
-        .lean()
+        .lean<Record<string, any>[]>()
     : [];
 
   const tracksById = new Map<string, typeof tracks[number]>();
@@ -55,7 +55,7 @@ async function getDvd(slug: string) {
   }
 
   const orderedTracks = trackIds
-    .map((id) => tracksById.get(id))
+    .map((id: any) => tracksById.get(id))
     .filter((track): track is typeof tracks[number] => Boolean(track))
     .map((track) => ({
       id: track._id.toString(),

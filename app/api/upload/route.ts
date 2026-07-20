@@ -209,7 +209,7 @@ export async function POST(request: Request) {
 
     const formats =
       resourceType === 'image'
-        ? (result.eager?.reduce<Record<string, unknown>>((acc, item, index) => {
+        ? ((result.eager as any[] | undefined)?.reduce((acc: Record<string, unknown>, item: any, index: number) => {
             const key = index === 0 ? 'thumbnail' : index === 1 ? 'small' : 'medium';
             acc[key] = {
               url: item.secure_url,

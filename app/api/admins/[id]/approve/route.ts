@@ -39,7 +39,7 @@ export async function PATCH(_request: Request, { params }: RouteContext) {
   }
 
   admin.approved = true;
-  admin.approvedBy = approverId;
+  admin.approvedBy = new Types.ObjectId(approverId);
   admin.approvedAt = new Date();
   await admin.save();
   await admin.populate('approvedBy', 'name email role');

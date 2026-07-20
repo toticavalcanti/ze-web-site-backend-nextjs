@@ -134,7 +134,7 @@ function resolveTrackRecord(entry: unknown): Record<string, unknown> | null {
 
 function mapTracksFromResponse(entries: unknown[]): TrackForm[] {
   return entries
-    .map((entry) => {
+    .map((entry): TrackForm | null => {
       const record = resolveTrackRecord(entry);
       if (!record) {
         return null;
@@ -159,9 +159,9 @@ function mapTracksFromResponse(entries: unknown[]): TrackForm[] {
         time: typeof record.time === 'string' ? record.time : '',
         lyric: extractLyricText(record.lyric),
         audioFile: extractAudioFile(record.track)
-      } satisfies TrackForm;
+      };
     })
-    .filter((track): track is TrackForm => Boolean(track));
+    .filter((track: TrackForm | null): track is TrackForm => Boolean(track));
 }
 
 export default function EditCdPage() {
@@ -446,7 +446,7 @@ export default function EditCdPage() {
             lyric: incoming.lyric,
             audioFile: incoming.audioFile,
             persistedId: incoming.persistedId
-          } satisfies TrackForm;
+          };
         }
         const fallbackId = tempQueue.shift();
         const nextId = fallbackId ?? incoming.persistedId ?? incoming.id;
@@ -459,7 +459,7 @@ export default function EditCdPage() {
           ...incoming,
           id: nextId,
           persistedId: incoming.persistedId
-        } satisfies TrackForm;
+        };
       });
 
       setTracks(mergedTracks);

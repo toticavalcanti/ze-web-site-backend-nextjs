@@ -30,9 +30,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 
   const order = parsed.data.order;
-  const trackMap = new Map(cd.track?.map((item) => [item.ref?.toString(), item]));
+  const trackMap = new Map((cd.track ?? []).map((item: any) => [item.ref?.toString(), item] as const));
   cd.track = order
-    .map((id) => trackMap.get(id))
+    .map((id: any) => trackMap.get(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   cd.updated_by = authResult.session.user!.id;
   await cd.save();

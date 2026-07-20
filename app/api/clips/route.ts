@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json(formatClip(await serializeClip(clip._id.toString())), { status: 201 });
+    return NextResponse.json(formatClip((await serializeClip(clip._id.toString())) as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('Clip create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

@@ -11,20 +11,20 @@ async function fixDvdTracks() {
     if (!Array.isArray(dvd.track)) continue;
 
     const cleanedTracks = dvd.track
-      .map((item) => {
+      .map((item: any) => {
         if (item && typeof item === 'object' && 'ref' in (item as Record<string, unknown>)) {
           return (item as { ref?: unknown }).ref ?? null;
         }
         return item;
       })
-      .map((value) => {
+      .map((value: any) => {
         if (value instanceof Types.ObjectId) return value;
         if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
           return new Types.ObjectId(value);
         }
         return null;
       })
-      .filter((value): value is Types.ObjectId => value !== null);
+      .filter((value: any): value is Types.ObjectId => value !== null);
 
     dvd.track = cleanedTracks;
     await dvd.save();

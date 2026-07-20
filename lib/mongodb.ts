@@ -6,10 +6,10 @@ interface MongooseCache {
   promise: Promise<typeof mongoose> | null;
 }
 
-let cached = global.mongoose as MongooseCache | undefined;
+let cached = global.mongoose as unknown as MongooseCache | undefined;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null } as MongooseCache;
+  cached = (global as unknown as { mongoose: MongooseCache }).mongoose = { conn: null, promise: null };
 }
 
 export async function connectMongo() {

@@ -29,7 +29,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  return NextResponse.json(formatText(text));
+  return NextResponse.json(formatText(text as Record<string, unknown> | null));
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -80,7 +80,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const updated = await TextModel.findById(text._id)
       .populate({ path: 'cover', match: { deleted: { $ne: true } } })
       .lean();
-    return NextResponse.json(formatText(updated));
+    return NextResponse.json(formatText(updated as Record<string, unknown> | null));
   } catch (error) {
     console.error('Text update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

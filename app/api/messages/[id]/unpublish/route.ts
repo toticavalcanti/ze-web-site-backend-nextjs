@@ -41,7 +41,7 @@ export async function PATCH(_: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: 'Mensagem não encontrada' }, { status: 404 });
     }
 
-    return NextResponse.json(formatMessage(updated));
+    return NextResponse.json(formatMessage(updated as Record<string, unknown> | null));
   } catch (error) {
     console.error('Message unpublish error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

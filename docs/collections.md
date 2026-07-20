@@ -79,6 +79,17 @@
     - components_cd_tracks e components_dvd_tracks são coleções auxiliares legadas utilizadas para ordenação de faixas.
     - Consumidas diretamente via connectMongo() em app/admin/page.tsx para estatísticas.
 
+
+17. sitesettings
+    - Descrição: Configurações globais do site (fundos da home e de /messages/post, biografias PT/EN).
+    - Modelo: lib/models/SiteSetting.ts
+    - Usado em: /api/settings/*, /admin/site
+
+18. ratelimits
+    - Descrição: Controle de rate limit do envio público de mensagens (TTL, se limpa sozinha).
+    - Modelo: lib/rate-limit.ts
+    - Usado em: POST /api/messages
+
 === COLLECTIONS QUE PODEM SER DELETADAS ===
 
 1. strapi_administrator (motivo: legado do Strapi, não há modelo Mongoose correspondente)

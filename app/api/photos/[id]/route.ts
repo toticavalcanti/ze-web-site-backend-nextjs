@@ -22,8 +22,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  const uploadMap = await buildUploadMap(collectPhotoUploadIds(doc));
-  const photo = formatPhoto(doc, { uploadMap });
+  const uploadMap = await buildUploadMap(collectPhotoUploadIds(doc as { url?: unknown; image?: unknown }));
+  const photo = formatPhoto(doc as Record<string, unknown> | null, { uploadMap });
 
   return NextResponse.json(photo);
 }
@@ -87,8 +87,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     await photo.save();
 
     const updatedDoc = await PhotoModel.findById(photo._id).lean();
-    const uploadMap = await buildUploadMap(collectPhotoUploadIds(updatedDoc));
-    return NextResponse.json(formatPhoto(updatedDoc, { uploadMap }));
+    const uploadMap = await buildUploadMap(collectPhotoUploadIds(updatedDoc as { url?: unknown; image?: unknown } | null));
+    return NextResponse.json(formatPhoto(updatedDoc as Record<string, unknown> | null, { uploadMap }));
   } catch (error) {
     console.error('Photo update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

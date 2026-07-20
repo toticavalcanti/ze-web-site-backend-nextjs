@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     const created = await TextModel.findById(text._id).populate('cover').lean();
-    return NextResponse.json(formatText(created), { status: 201 });
+    return NextResponse.json(formatText(created as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('Text create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

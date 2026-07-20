@@ -14,6 +14,8 @@ import { ImageUpload, type UploadedImage } from '@/components/admin/image-upload
 import { toast } from 'sonner';
 
 const formSchema = showSchema.extend({
+  // No formulário a data é string (input type=date); a API converte com z.coerce.date.
+  date: z.string().min(1, 'Data é obrigatória'),
   published: z.boolean().optional()
 });
 

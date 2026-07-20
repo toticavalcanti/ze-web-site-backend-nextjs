@@ -31,7 +31,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  return NextResponse.json(formatShow(show));
+  return NextResponse.json(formatShow(show as Record<string, unknown> | null));
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -78,7 +78,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const updated = await ShowModel.findById(show._id).populate('cover').lean();
-    return NextResponse.json(formatShow(updated));
+    return NextResponse.json(formatShow(updated as Record<string, unknown> | null));
   } catch (error) {
     console.error('Show update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

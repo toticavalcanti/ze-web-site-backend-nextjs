@@ -149,7 +149,7 @@ function resolveTrackRecord(entry: unknown): AnyRecord | null {
 
 function mapTracksFromResponse(entries: unknown[]): TrackForm[] {
   return entries
-    .map((entry) => {
+    .map((entry): TrackForm | null => {
       const record = resolveTrackRecord(entry);
       if (!record) {
         return null;
@@ -181,9 +181,9 @@ function mapTracksFromResponse(entries: unknown[]): TrackForm[] {
         time: typeof record.time === 'string' ? record.time : '',
         lyric: extractLyricText((record as { lyric?: unknown }).lyric),
         audioFile: extractAudioFile((record as { track?: unknown }).track)
-      } satisfies TrackForm;
+      };
     })
-    .filter((track): track is TrackForm => Boolean(track));
+    .filter((track: TrackForm | null): track is TrackForm => Boolean(track));
 }
 
 export default function EditDvdPage() {
@@ -684,8 +684,8 @@ export default function EditDvdPage() {
                       <div className="space-y-2">
                         <Label>Áudio</Label>
                         <AudioUpload
-                          value={track.audioFile ? [track.audioFile] : []}
-                          onChange={(files) => updateTrack(track.id, 'audioFile', files[0] ?? null)}
+                          value={track.audioFile ?? undefined}
+                          onChange={(file) => updateTrack(track.id, 'audioFile', file)}
                           folder="dvds/tracks"
                         />
                       </div>

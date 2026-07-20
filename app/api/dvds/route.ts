@@ -208,7 +208,7 @@ async function formatDvd(
   if (!map) {
     const ids = new Set<string>();
     for (const entry of (hydrated.track as unknown[]) ?? []) {
-      const track = (entry as { ref?: { lyric?: unknown } }).ref ?? entry;
+      const track = ((entry as { ref?: { lyric?: unknown } }).ref ?? entry) as { lyric?: unknown } | null | undefined;
       const rawLyric = track?.lyric as unknown;
       if (!rawLyric) continue;
       if (typeof rawLyric === 'string') {
@@ -228,7 +228,7 @@ async function formatDvd(
     }
 
     if (ids.size) {
-      const lyricDocs = await LyricModel.find({ _id: { $in: Array.from(ids) } }).lean();
+      const lyricDocs = await LyricModel.find({ _id: { $in: Array.from(ids) } }).lean<Record<string, any>[]>();
       map = new Map(
         lyricDocs
           .map((doc) => {
@@ -237,7 +237,7 @@ async function formatDvd(
             if (!normalized || !id) return null;
             return [id, normalized] as const;
           })
-          .filter((entry): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
+          .filter((entry: readonly [string, Record<string, unknown>] | null): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
       );
     } else {
       map = new Map();
@@ -315,7 +315,7 @@ export async function GET(request: Request) {
   const lyricIds = new Set<string>();
   for (const dvd of dvds) {
     for (const entry of dvd.track ?? []) {
-      const track = (entry as { ref?: { lyric?: unknown } }).ref ?? entry;
+      const track = ((entry as { ref?: { lyric?: unknown } }).ref ?? entry) as { lyric?: unknown } | null | undefined;
       const rawLyric = track?.lyric as unknown;
       if (!rawLyric) continue;
       if (typeof rawLyric === 'string') {
@@ -340,13 +340,13 @@ export async function GET(request: Request) {
     : [];
   const lyricMap = new Map(
     lyricDocs
-      .map((doc) => {
-        const normalized = normalizeDocument(doc);
+      .map((doc): readonly [string, Record<string, unknown>] | null => {
+        const normalized = normalizeDocument(doc) as Record<string, unknown> | null;
         const id = normalized?.id as string | undefined;
         if (!normalized || !id) return null;
         return [id, normalized] as const;
       })
-      .filter((entry): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
+      .filter((entry: readonly [string, Record<string, unknown>] | null): entry is readonly [string, Record<string, unknown>] => Boolean(entry))
   );
 
   const formatted = await Promise.all(dvds.map((dvd) => formatDvd(dvd, lyricMap)));
@@ -422,7 +422,7 @@ export async function POST(request: Request) {
       await attachFile({ fileId: dvdData.cover, refId: dvd._id, kind: 'Dvd', field: 'cover' });
     }
 
-    return NextResponse.json(await formatDvd(await serializeDvd(dvd._id.toString())), { status: 201 });
+    return NextResponse.json(await formatDvd((await serializeDvd(dvd._id.toString())) as Record<string, unknown> | null), { status: 201 });
   } catch (error) {
     console.error('DVD create error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });

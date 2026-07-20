@@ -29,9 +29,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'DVD não encontrado' }, { status: 404 });
   }
 
-  const map = new Map(dvd.track?.map((item) => [item.ref?.toString(), item]));
+  const map = new Map((dvd.track ?? []).map((item: any) => [item.ref?.toString(), item] as const));
   dvd.track = parsed.data.order
-    .map((id) => map.get(id))
+    .map((id: any) => map.get(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   dvd.updated_by = authResult.session.user!.id;
   await dvd.save();

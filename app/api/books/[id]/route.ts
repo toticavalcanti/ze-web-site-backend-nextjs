@@ -31,7 +31,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json(null, { status: 404 });
   }
 
-  return NextResponse.json(formatBook(book));
+  return NextResponse.json(formatBook(book as Record<string, unknown> | null));
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -70,7 +70,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const updated = await BookModel.findById(existing._id).populate('cover').lean();
-    return NextResponse.json(formatBook(updated));
+    return NextResponse.json(formatBook(updated as Record<string, unknown> | null));
   } catch (error) {
     console.error('Book update error', error);
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });
