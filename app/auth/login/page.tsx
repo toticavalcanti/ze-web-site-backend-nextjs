@@ -6,7 +6,6 @@ import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Link from 'next/link';
 import { loginSchema } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,20 +70,6 @@ export default function LoginPage() {
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
-        <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
-          <p>
-            Ainda não possui conta?{' '}
-            <Link href="/auth/register" className="text-primary underline">
-              Cadastre-se
-            </Link>
-          </p>
-          <p>
-            Esqueceu sua senha?{' '}
-            <Link href="/auth/forgot-password" className="text-primary underline">
-              Recuperar acesso
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );
