@@ -137,7 +137,7 @@ export default function SuportePage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1 text-purple-500">•</span>
-                <span>Clique em "Adicionar novo" para criar novos itens em cada seção</span>
+                <span>Clique em &quot;Adicionar novo&quot; para criar novos itens em cada seção</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1 text-purple-500">•</span>

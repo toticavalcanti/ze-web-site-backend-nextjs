@@ -239,7 +239,7 @@ async function buildLyricMap(ids: Set<string>) {
   );
 }
 
-export async function formatCdForResponse(
+async function formatCdForResponse(
   cd: Record<string, unknown> | null,
   lyricMap?: Map<string, Record<string, unknown>>
 ) {

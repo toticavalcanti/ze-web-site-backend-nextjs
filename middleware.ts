@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/lib/auth.config';
+
+// Instância leve do NextAuth, sem provider de banco: o middleware roda no Edge
+// Runtime e não pode carregar mongoose/bcrypt.
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   if (!req.auth?.user && req.nextUrl.pathname.startsWith('/admin')) {

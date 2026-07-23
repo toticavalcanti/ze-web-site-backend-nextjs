@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 import { connectMongo } from '@/lib/mongodb';
 import AdminModel from '@/lib/models/Admin';
+import { authConfig } from '@/lib/auth.config';
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -11,14 +12,7 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers: authHandlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true,
-  session: {
-    strategy: 'jwt',
-    maxAge: 60 * 60 * 24 * 30
-  },
-  pages: {
-    signIn: '/auth/login'
-  },
+  ...authConfig,
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -51,20 +45,5 @@ export const { handlers: authHandlers, signIn, signOut, auth } = NextAuth({
         };
       }
     })
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as Record<string, unknown>).role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub || '';
-        session.user.role = ((token.role as 'admin' | 'super_admin' | undefined) ?? 'admin');
-      }
-      return session;
-    }
-  }
+  ]
 });
