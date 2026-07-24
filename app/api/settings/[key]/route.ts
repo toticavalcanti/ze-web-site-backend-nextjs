@@ -7,9 +7,9 @@ import { requireAdmin } from '@/lib/api';
 export const dynamic = 'force-dynamic';
 
 const backgroundSchema = z.object({
-  url: z.string().url().max(2000),
+  url: z.string().max(2000),
   mediaId: z.string().optional()
-});
+}).nullable();
 
 const biographyBlockSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('heading'), text: z.string().max(300) }),
