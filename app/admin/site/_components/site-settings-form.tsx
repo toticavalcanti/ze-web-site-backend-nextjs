@@ -173,7 +173,7 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
       </CardHeader>
       <CardContent className="space-y-4">
         {preview && (
-          <div className="relative overflow-hidden rounded-lg border">
+          <div className="group relative overflow-hidden rounded-lg border">
             <NextImage
               src={preview}
               alt={title}
@@ -185,6 +185,16 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
             <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">
               {hasChange ? 'Nova imagem (não salva)' : 'Imagem atual'}
             </span>
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute right-3 top-3 h-8 w-8 rounded-full shadow-md transition-transform hover:scale-105"
+              onClick={handleRemove}
+              title="Remover imagem"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
@@ -214,17 +224,9 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
           />
         </label>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => setIsPickerOpen(true)}>
-            <ImageIcon className="mr-2 h-4 w-4" /> Escolher da biblioteca
-          </Button>
-
-          {preview && (
-            <Button type="button" variant="outline" onClick={handleRemove}>
-              <Trash2 className="mr-2 h-4 w-4 text-red-500" /> Remover imagem
-            </Button>
-          )}
-        </div>
+        <Button type="button" variant="outline" className="w-full" onClick={() => setIsPickerOpen(true)}>
+          <ImageIcon className="mr-2 h-4 w-4" /> Escolher da biblioteca
+        </Button>
 
         <MediaPicker
           open={isPickerOpen}
