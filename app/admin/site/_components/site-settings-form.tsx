@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ImageUpload, type UploadedImage } from '@/components/admin/image-upload';
+import { MediaPicker } from '@/components/admin/media-picker';
 import { cn } from '@/lib/utils';
 import {
   ArrowDown,
@@ -58,6 +59,7 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
   const [current, setCurrent] = useState<BackgroundSetting | null>(initial ?? null);
   const [pending, setPending] = useState<UploadedImage[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const preview = pending[0]?.url ?? current?.url;
   const hasChange = pending.length > 0;
@@ -103,6 +105,16 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
 
         <ImageUpload value={pending} onChange={setPending} folder="photos-background" />
 
+        <Button type="button" variant="outline" className="w-full" onClick={() => setIsPickerOpen(true)}>
+          <ImageIcon className="mr-2 h-4 w-4" /> Escolher da biblioteca
+        </Button>
+
+        <MediaPicker
+          open={isPickerOpen}
+          onOpenChange={setIsPickerOpen}
+          onSelect={(item) => setPending([{ _id: item._id, url: item.url, name: item.name }])}
+        />
+
         <div className="flex items-center justify-end gap-3">
           {hasChange && (
             <Button type="button" variant="outline" onClick={() => setPending([])} disabled={isSaving}>
@@ -141,6 +153,7 @@ interface BlockEditorProps {
 }
 
 function BlockEditor({ block, index, total, onChange, onMove, onRemove }: BlockEditorProps) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const labels: Record<BiographyBlock['type'], string> = {
     heading: 'Título (ano/período)',
     paragraph: 'Parágrafo',
@@ -253,29 +266,51 @@ function BlockEditor({ block, index, total, onChange, onMove, onRemove }: BlockE
               />
               <div className="flex flex-1 flex-col gap-2">
                 <p className="break-all text-xs text-slate-500">{block.url}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-fit"
-                  onClick={() => onChange(index, { ...block, url: '' })}
-                >
-                  Trocar imagem
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onChange(index, { ...block, url: '' })}
+                  >
+                    Enviar outra
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPickerOpen(true)}
+                  >
+                    Escolher da biblioteca
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
-            <ImageUpload
-              value={[]}
-              onChange={(files) => {
-                const file = files[0];
-                if (file) {
-                  onChange(index, { ...block, url: file.url, alt: block.alt || file.name || '' });
-                }
-              }}
-              folder="fixed-images"
-            />
+            <div className="space-y-2">
+              <ImageUpload
+                value={[]}
+                onChange={(files) => {
+                  const file = files[0];
+                  if (file) {
+                    onChange(index, { ...block, url: file.url, alt: block.alt || file.name || '' });
+                  }
+                }}
+                folder="fixed-images"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsPickerOpen(true)}>
+                Escolher da biblioteca
+              </Button>
+            </div>
           )}
+
+          <MediaPicker
+            open={isPickerOpen}
+            onOpenChange={setIsPickerOpen}
+            onSelect={(item) =>
+              onChange(index, { ...block, url: item.url, alt: block.alt || item.name || '' })
+            }
+          />
         </div>
       )}
     </div>
