@@ -18,7 +18,9 @@ import {
   Loader2,
   Pilcrow,
   Save,
-  Trash2
+  Trash2,
+  UploadCloud,
+  X
 } from 'lucide-react';
 import type {
   BackgroundSetting,
@@ -58,25 +60,108 @@ interface BackgroundCardProps {
 function BackgroundCard({ settingKey, title, description, initial }: BackgroundCardProps) {
   const [current, setCurrent] = useState<BackgroundSetting | null>(initial ?? null);
   const [pending, setPending] = useState<UploadedImage[]>([]);
+  const [isRemoved, setIsRemoved] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const preview = pending[0]?.url ?? current?.url;
-  const hasChange = pending.length > 0;
+  const preview = isRemoved ? null : (pending[0]?.url ?? current?.url);
+  const hasChange = isRemoved ? current?.url !== '' && current?.url != null : pending.length > 0;
 
   const handleSave = async () => {
-    if (!pending[0]) return;
+    if (!hasChange) return;
     setIsSaving(true);
     try {
-      const value: BackgroundSetting = { url: pending[0].url, mediaId: pending[0]._id };
-      await saveSetting(settingKey, value);
-      setCurrent(value);
-      setPending([]);
-      toast.success(`${title} atualizada!`);
+      if (isRemoved) {
+        await saveSetting(settingKey, null);
+        setCurrent(null);
+        setPending([]);
+        setIsRemoved(false);
+        toast.success(`${title} removida!`);
+      } else if (pending[0]) {
+        const value: BackgroundSetting = { url: pending[0].url, mediaId: pending[0]._id };
+        await saveSetting(settingKey, value);
+        setCurrent(value);
+        setPending([]);
+        toast.success(`${title} atualizada!`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao salvar');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRemove = () => {
+    setPending([]);
+    setIsRemoved(true);
+  };
+
+  const handleSelectFromPicker = (item: { _id: string; url: string; name?: string }) => {
+    setIsRemoved(false);
+    setPending([{ _id: item._id, url: item.url, name: item.name }]);
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+
+    if (!validTypes.includes(file.type)) {
+      toast.error('Apenas imagens PNG, JPEG e WebP são permitidas.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'photos-background');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || 'Falha no upload');
+      }
+
+      const data = (await response.json()) as UploadedImage;
+      setIsRemoved(false);
+      setPending([data]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao fazer upload da imagem');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files);
     }
   };
 
@@ -103,21 +188,61 @@ function BackgroundCard({ settingKey, title, description, initial }: BackgroundC
           </div>
         )}
 
-        <ImageUpload value={pending} onChange={setPending} folder="photos-background" />
+        <label
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            'flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/40 p-6 text-center transition hover:border-primary',
+            isDragging && 'border-indigo-500 bg-indigo-50/50',
+            isUploading && 'opacity-60'
+          )}
+        >
+          {isUploading ? (
+            <Loader2 className="mb-2 h-6 w-6 animate-spin text-muted-foreground" />
+          ) : (
+            <UploadCloud className="mb-2 h-6 w-6 text-muted-foreground" />
+          )}
+          <p className="text-sm text-muted-foreground">Arraste e solte ou clique para enviar</p>
+          <Input
+            type="file"
+            className="hidden"
+            onChange={(event) => handleFileUpload(event.target.files)}
+            disabled={isUploading}
+            accept="image/png,image/jpeg,image/webp"
+          />
+        </label>
 
-        <Button type="button" variant="outline" className="w-full" onClick={() => setIsPickerOpen(true)}>
-          <ImageIcon className="mr-2 h-4 w-4" /> Escolher da biblioteca
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => setIsPickerOpen(true)}>
+            <ImageIcon className="mr-2 h-4 w-4" /> Escolher da biblioteca
+          </Button>
+
+          {preview && (
+            <Button type="button" variant="outline" onClick={handleRemove}>
+              <Trash2 className="mr-2 h-4 w-4 text-red-500" /> Remover imagem
+            </Button>
+          )}
+        </div>
 
         <MediaPicker
           open={isPickerOpen}
           onOpenChange={setIsPickerOpen}
-          onSelect={(item) => setPending([{ _id: item._id, url: item.url, name: item.name }])}
+          onSelect={handleSelectFromPicker}
         />
 
         <div className="flex items-center justify-end gap-3">
           {hasChange && (
-            <Button type="button" variant="outline" onClick={() => setPending([])} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPending([]);
+                setIsRemoved(false);
+              }}
+              disabled={isSaving}
+            >
               Descartar
             </Button>
           )}
