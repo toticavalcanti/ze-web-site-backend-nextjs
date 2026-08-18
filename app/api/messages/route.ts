@@ -21,6 +21,22 @@ function formatMessage(doc: Record<string, unknown> | null) {
   return withPublishedFlag(withDefaults);
 }
 
+/**
+ * Campos que NUNCA podem sair para o público.
+ * O `email` do fã é dado pessoal (LGPD) e o mural do site não precisa dele —
+ * só o painel administrativo usa.
+ */
+const PUBLIC_HIDDEN_FIELDS = ['email', 'created_by', 'createdBy', 'updated_by', 'updatedBy'];
+
+function stripPrivateFields(doc: Record<string, unknown> | null) {
+  if (!doc) return doc;
+  const clone = { ...doc };
+  for (const field of PUBLIC_HIDDEN_FIELDS) {
+    delete clone[field];
+  }
+  return clone;
+}
+
 const SORT_FIELDS = new Map([
   ['createdAt', 'createdAt'],
   ['created_at', 'createdAt'],
@@ -106,7 +122,10 @@ export async function GET(request: Request) {
     query,
     shouldPaginate ? MessageModel.countDocuments(filter) : Promise.resolve(undefined)
   ]);
-  const formatted = messages.map((message) => formatMessage(message));
+  const formatted = messages.map((message) => {
+    const doc = formatMessage(message);
+    return isAdminRequest ? doc : stripPrivateFields(doc);
+  });
 
   if (shouldPaginate) {
     return NextResponse.json(buildPaginatedResponse(formatted, { total, limit: limit ?? undefined, start, page }));
